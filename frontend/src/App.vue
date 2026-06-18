@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 const folders = ref([]);
 const latestJob = ref(null);
@@ -7,6 +7,24 @@ const question = ref('What changed in the latest mock project notes?');
 const answer = ref(null);
 const isAsking = ref(false);
 const error = ref('');
+
+const processingSummary = computed(() => {
+  if (!latestJob.value) {
+    return null;
+  }
+
+  const processed = latestJob.value.processedDocuments;
+  const failed = 2;
+  const skipped = 3;
+  const successful = Math.max(processed - failed - skipped, 0);
+
+  return {
+    successful,
+    failed,
+    skipped,
+    currentStep: 'Reading mocked metadata and preparing preview records'
+  };
+});
 
 async function loadDashboard() {
   error.value = '';
@@ -58,74 +76,117 @@ onMounted(loadDashboard);
 
 <template>
   <main class="app-shell">
-    <header class="masthead">
-      <p class="eyebrow">Mac-first mock prototype</p>
-      <h1>Local Document Assistant</h1>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Mac-first mock prototype</p>
+        <h1>Local Document Assistant</h1>
+      </div>
+      <span class="header-pill">Mock data only</span>
     </header>
 
     <p v-if="error" class="error">{{ error }}</p>
 
-    <section class="section">
-      <div>
+    <section class="card source-card">
+      <div class="section-heading">
         <p class="eyebrow">Setup</p>
         <h2>Document source</h2>
+        <p>Choose the local folders this assistant will eventually understand. These entries are mocked.</p>
+      </div>
+
+      <div class="folder-picker">
+        <button type="button" class="secondary-button">Choose folder</button>
+        <span>No real folder picker is connected</span>
       </div>
 
       <div class="folder-list">
         <article v-for="folder in folders" :key="folder.id" class="folder-row">
-          <div>
+          <span class="folder-icon" aria-hidden="true"></span>
+          <div class="folder-copy">
             <strong>{{ folder.path }}</strong>
             <span>{{ folder.documentCount }} mocked documents</span>
           </div>
+          <span class="folder-state">Selected</span>
         </article>
       </div>
     </section>
 
-    <section class="section">
-      <div>
-        <p class="eyebrow">Processing</p>
-        <h2>Status</h2>
+    <section class="card">
+      <div class="section-heading split-heading">
+        <div>
+          <p class="eyebrow">Processing</p>
+          <h2>Status</h2>
+          <p>Latest mocked job from the backend.</p>
+        </div>
+        <span v-if="latestJob" class="status-badge">{{ latestJob.status }}</span>
       </div>
 
-      <div v-if="latestJob" class="status-grid">
-        <div>
-          <span class="label">Job</span>
-          <strong>{{ latestJob.name }}</strong>
+      <template v-if="latestJob && processingSummary">
+        <div class="job-summary">
+          <div>
+            <span class="label">Job</span>
+            <strong>{{ latestJob.name }}</strong>
+          </div>
+          <div>
+            <span class="label">Current step</span>
+            <strong>{{ processingSummary.currentStep }}</strong>
+          </div>
         </div>
-        <div>
-          <span class="label">State</span>
-          <strong>{{ latestJob.status }}</strong>
-        </div>
-        <div>
-          <span class="label">Documents</span>
-          <strong>{{ latestJob.processedDocuments }} / {{ latestJob.totalDocuments }}</strong>
-        </div>
-      </div>
 
-      <div v-if="latestJob" class="progress-track" aria-label="Processing progress">
-        <div class="progress-fill" :style="{ width: `${latestJob.progressPercent}%` }"></div>
-      </div>
+        <div class="progress-header">
+          <span>{{ latestJob.progressPercent }}% complete</span>
+          <strong>{{ latestJob.processedDocuments }} / {{ latestJob.totalDocuments }} files</strong>
+        </div>
+
+        <div class="progress-track" aria-label="Processing progress">
+          <div class="progress-fill" :style="{ width: `${latestJob.progressPercent}%` }"></div>
+        </div>
+
+        <div class="status-grid">
+          <div>
+            <span class="label">Successful</span>
+            <strong>{{ processingSummary.successful }}</strong>
+          </div>
+          <div>
+            <span class="label">Failed</span>
+            <strong>{{ processingSummary.failed }}</strong>
+          </div>
+          <div>
+            <span class="label">Skipped</span>
+            <strong>{{ processingSummary.skipped }}</strong>
+          </div>
+        </div>
+      </template>
     </section>
 
-    <section class="section ask-section">
-      <div>
+    <section class="card ask-section">
+      <div class="section-heading">
         <p class="eyebrow">Ask</p>
-        <h2>Answer</h2>
+        <h2>Question panel</h2>
+        <p>Ask a question and show a mocked answer with mocked source cards.</p>
       </div>
 
-      <form class="question-form" @submit.prevent="askQuestion">
-        <input v-model="question" name="question" autocomplete="off" />
+      <form class="chat-panel" @submit.prevent="askQuestion">
+        <label for="question">Question</label>
+        <textarea
+          id="question"
+          v-model="question"
+          name="question"
+          rows="4"
+          autocomplete="off"
+        ></textarea>
         <button type="submit" :disabled="isAsking">
-          {{ isAsking ? 'Asking...' : 'Ask' }}
+          {{ isAsking ? 'Asking...' : 'Ask assistant' }}
         </button>
       </form>
 
       <article v-if="answer" class="answer">
+        <span class="assistant-label">Mocked answer</span>
         <p>{{ answer.answer }}</p>
-        <div class="citations">
-          <span v-for="citation in answer.citations" :key="citation.path">
-            {{ citation.title }} · {{ citation.path }}
-          </span>
+        <div class="source-grid">
+          <article v-for="citation in answer.citations" :key="citation.path" class="source-card-item">
+            <strong>{{ citation.title }}</strong>
+            <span>{{ citation.path }}</span>
+          </article>
         </div>
       </article>
     </section>
