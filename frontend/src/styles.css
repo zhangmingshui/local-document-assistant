@@ -102,33 +102,71 @@ textarea {
   gap: 16px;
 }
 
-.folder-picker {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+.source-form {
+  display: grid;
+  gap: 10px;
   margin-bottom: 14px;
   padding: 14px;
-  border: 1px dashed #bdc7cb;
+  border: 1px solid #dfe6e4;
   border-radius: 8px;
   background: #f8faf9;
-  color: #61707b;
 }
 
-.secondary-button,
+.source-form label,
+.chat-panel button {
+  font-weight: 750;
+}
+
+.source-form label {
+  color: #53616b;
+  font-size: 0.9rem;
+}
+
+.source-path-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.source-path-row input {
+  min-height: 42px;
+  min-width: 0;
+  padding: 0 12px;
+  border: 1px solid #cfd8dc;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #17212b;
+}
+
+.source-path-row button,
 .chat-panel button {
   min-height: 42px;
+  padding: 0 16px;
   border: 0;
   border-radius: 6px;
+  background: #1d5c8a;
+  color: #fff;
   font-weight: 750;
   cursor: pointer;
 }
 
-.secondary-button {
-  padding: 0 14px;
-  border: 1px solid #c8d0d4;
-  background: #ffffff;
-  color: #23313b;
+.checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+}
+
+.checkbox-row input {
+  width: 16px;
+  height: 16px;
+  accent-color: #1d5c8a;
+}
+
+.confirmation-message {
+  margin: 2px 0 0;
+  color: #28624f;
+  font-size: 0.94rem;
 }
 
 .folder-list {
@@ -260,9 +298,6 @@ textarea {
 
 .chat-panel button {
   justify-self: end;
-  padding: 0 18px;
-  background: #1d5c8a;
-  color: #fff;
 }
 
 .chat-panel button:disabled {
@@ -313,7 +348,6 @@ textarea {
 
   .app-header,
   .split-heading,
-  .folder-picker,
   .progress-header {
     align-items: flex-start;
     flex-direction: column;
@@ -325,6 +359,7 @@ textarea {
 
   .folder-row,
   .job-summary,
+  .source-path-row,
   .status-grid,
   .source-grid {
     grid-template-columns: 1fr;
@@ -334,6 +369,7 @@ textarea {
     justify-self: start;
   }
 
+  .source-path-row button,
   .chat-panel button {
     justify-self: stretch;
   }

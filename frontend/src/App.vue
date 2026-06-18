@@ -3,6 +3,9 @@ import { computed, onMounted, ref } from 'vue';
 
 const folders = ref([]);
 const latestJob = ref(null);
+const sourcePath = ref('/Users/example/Documents/LocalDocs');
+const includeSubfolders = ref(true);
+const sourceConfirmation = ref('');
 const question = ref('What changed in the latest mock project notes?');
 const answer = ref(null);
 const isAsking = ref(false);
@@ -71,6 +74,16 @@ async function askQuestion() {
   }
 }
 
+function useMockSourceFolder() {
+  const payload = {
+    path: sourcePath.value,
+    includeSubfolders: includeSubfolders.value
+  };
+
+  console.log(payload);
+  sourceConfirmation.value = 'Mock source configured. This has not been saved yet.';
+}
+
 onMounted(loadDashboard);
 </script>
 
@@ -93,10 +106,25 @@ onMounted(loadDashboard);
         <p>Choose the local folders this assistant will eventually understand. These entries are mocked.</p>
       </div>
 
-      <div class="folder-picker">
-        <button type="button" class="secondary-button">Choose folder</button>
-        <span>No real folder picker is connected</span>
-      </div>
+      <form class="source-form" @submit.prevent="useMockSourceFolder">
+        <label for="source-path">Folder path</label>
+        <div class="source-path-row">
+          <input
+            id="source-path"
+            v-model="sourcePath"
+            name="sourcePath"
+            autocomplete="off"
+          />
+          <button type="submit">Use this folder</button>
+        </div>
+
+        <label class="checkbox-row">
+          <input v-model="includeSubfolders" type="checkbox" />
+          <span>Include subfolders</span>
+        </label>
+
+        <p v-if="sourceConfirmation" class="confirmation-message">{{ sourceConfirmation }}</p>
+      </form>
 
       <div class="folder-list">
         <article v-for="folder in folders" :key="folder.id" class="folder-row">
