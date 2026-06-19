@@ -13,11 +13,6 @@ export async function getFolders() {
   return readJson(response);
 }
 
-export async function getLatestProcessingJob() {
-  const response = await fetch('/api/processing-jobs/latest');
-  return readJson(response);
-}
-
 export async function startProcessingJob(payload) {
   console.log('Starting mock processing job request', payload);
 
