@@ -20,10 +20,12 @@ const isAsking = ref(false);
 const questionError = ref('');
 const error = ref('');
 
-const displayedProcessingJob = computed(() => processingStatusResponse.value ?? latestJob.value);
+const displayedProcessingJob = computed(() => processingStatusResponse.value);
+const statusBadgeLabel = computed(() => displayedProcessingJob.value?.status ?? sourceJob.value?.status);
 const isProcessingComplete = computed(() => (
   displayedProcessingJob.value?.status?.startsWith('COMPLETED') ?? false
 ));
+const isQuestionBlank = computed(() => question.value.trim().length === 0);
 
 const processingSummary = computed(() => {
   if (!displayedProcessingJob.value) {
@@ -193,6 +195,7 @@ onUnmounted(stopPollingStatus);
       <div>
         <p class="eyebrow">Mac-first mock prototype</p>
         <h1>Local Document Assistant</h1>
+        <p class="app-subtitle">A small mocked workflow for configuring a source, processing it, and asking questions.</p>
       </div>
       <span class="header-pill">Mock data only</span>
     </header>
@@ -201,9 +204,9 @@ onUnmounted(stopPollingStatus);
 
     <section class="card source-card">
       <div class="section-heading">
-        <p class="eyebrow">Setup</p>
-        <h2>Document source</h2>
-        <p>Choose the local folders this assistant will eventually understand. These entries are mocked.</p>
+        <p class="eyebrow">Step 1</p>
+        <h2>Configure source</h2>
+        <p>Enter the folder path the real app will eventually index. This prototype sends the path as a mock request only.</p>
       </div>
 
       <form class="source-form" @submit.prevent="useMockSourceFolder">
@@ -237,7 +240,7 @@ onUnmounted(stopPollingStatus);
             <strong>{{ sourceJob.status }}</strong>
           </div>
           <p>{{ sourceJob.message }}</p>
-          <span>{{ sourceJob.pollUrl }}</span>
+          <span>Ready for Step 2: {{ sourceJob.pollUrl }}</span>
         </article>
       </form>
 
@@ -256,11 +259,13 @@ onUnmounted(stopPollingStatus);
     <section class="card">
       <div class="section-heading split-heading">
         <div>
-          <p class="eyebrow">Processing</p>
-          <h2>Status</h2>
-          <p>Manual refresh for the current mocked processing job.</p>
+          <p class="eyebrow">Step 2</p>
+          <h2>Process documents</h2>
+          <p>Refresh once, or start polling every 3 seconds, to watch the in-memory mock job advance.</p>
         </div>
-        <span v-if="displayedProcessingJob" class="status-badge">{{ displayedProcessingJob.status }}</span>
+        <span v-if="statusBadgeLabel" class="status-badge" :class="{ complete: isProcessingComplete }">
+          {{ statusBadgeLabel }}
+        </span>
       </div>
 
       <div class="refresh-panel">
@@ -293,6 +298,14 @@ onUnmounted(stopPollingStatus);
 
       <p v-if="refreshError" class="source-error">{{ refreshError }}</p>
 
+      <div v-if="!sourceJob" class="empty-state">
+        Configure a source in Step 1 to create a mock processing job before refreshing status.
+      </div>
+
+      <div v-else-if="!displayedProcessingJob" class="empty-state">
+        Mock job created. Click Refresh status or Start polling to load the first status response.
+      </div>
+
       <template v-if="displayedProcessingJob && processingSummary">
         <div class="job-summary">
           <div>
@@ -318,6 +331,10 @@ onUnmounted(stopPollingStatus);
           <div class="progress-fill" :style="{ width: `${displayedProcessingJob.progressPercent}%` }"></div>
         </div>
 
+        <p v-if="isProcessingComplete" class="completed-message">
+          Mock processing completed. Polling has stopped; you can still refresh manually.
+        </p>
+
         <div class="status-grid">
           <div>
             <span class="label">Successful</span>
@@ -337,15 +354,18 @@ onUnmounted(stopPollingStatus);
 
     <section class="card ask-section">
       <div class="section-heading">
-        <p class="eyebrow">Ask</p>
-        <h2>Question panel</h2>
-        <p>Ask a question and show a mocked answer with mocked source cards.</p>
+        <p class="eyebrow">Step 3</p>
+        <h2>Ask questions</h2>
+        <p>Ask a question and review the mocked answer with mocked source cards.</p>
       </div>
 
       <form class="chat-panel" @submit.prevent="askQuestion">
         <label for="question">Question</label>
         <p v-if="!isProcessingComplete" class="helper-message">
-          This is currently mocked. In the real app, answers will use indexed documents.
+          This is currently mocked. In the real app, answers will use indexed documents after processing completes.
+        </p>
+        <p v-else class="ready-message">
+          Mock processing is complete. Answers are still mocked, but this is the intended point to ask.
         </p>
         <textarea
           id="question"
@@ -354,10 +374,12 @@ onUnmounted(stopPollingStatus);
           rows="4"
           autocomplete="off"
         ></textarea>
-        <button type="submit" :disabled="isAsking">
-          {{ isAsking ? 'Asking...' : 'Ask assistant' }}
+        <button type="submit" :disabled="isAsking || isQuestionBlank">
+          {{ isAsking ? 'Asking...' : 'Ask question' }}
         </button>
       </form>
+
+      <p v-if="isQuestionBlank" class="last-refreshed">Enter a question to enable the Ask button.</p>
 
       <p v-if="questionError" class="source-error">{{ questionError }}</p>
 

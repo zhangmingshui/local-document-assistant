@@ -40,6 +40,13 @@ textarea {
   line-height: 1;
 }
 
+.app-subtitle {
+  max-width: 680px;
+  margin: 12px 0 0;
+  color: #53616b;
+  line-height: 1.5;
+}
+
 .eyebrow,
 .label {
   margin: 0 0 6px;
@@ -154,7 +161,7 @@ textarea {
 .source-path-row button:disabled,
 .refresh-actions button:disabled,
 .chat-panel button:disabled {
-  cursor: wait;
+  cursor: not-allowed;
   opacity: 0.68;
 }
 
@@ -266,6 +273,11 @@ textarea {
   color: #1e5f99;
 }
 
+.status-badge.complete {
+  background: #e9f4ef;
+  color: #28624f;
+}
+
 .refresh-panel {
   display: grid;
   grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr) auto;
@@ -309,6 +321,26 @@ textarea {
   margin: -8px 0 16px;
   color: #68747c;
   font-size: 0.94rem;
+}
+
+.empty-state,
+.completed-message {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 6px;
+  line-height: 1.45;
+}
+
+.empty-state {
+  border: 1px dashed #c8d0d4;
+  background: #f8faf9;
+  color: #53616b;
+}
+
+.completed-message {
+  border: 1px solid #d8e7df;
+  background: #f2faf6;
+  color: #28624f;
 }
 
 .job-summary {
@@ -373,11 +405,19 @@ textarea {
   font-weight: 750;
 }
 
-.helper-message {
+.helper-message,
+.ready-message {
   margin: -4px 0 2px;
-  color: #68747c;
   font-size: 0.94rem;
   line-height: 1.45;
+}
+
+.helper-message {
+  color: #68747c;
+}
+
+.ready-message {
+  color: #28624f;
 }
 
 .chat-panel textarea {
