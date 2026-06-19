@@ -5,7 +5,9 @@ const folders = ref([]);
 const latestJob = ref(null);
 const sourcePath = ref('/Users/example/Documents/LocalDocs');
 const includeSubfolders = ref(true);
-const sourceConfirmation = ref('');
+const sourceJob = ref(null);
+const isStartingSourceJob = ref(false);
+const sourceError = ref('');
 const question = ref('What changed in the latest mock project notes?');
 const answer = ref(null);
 const isAsking = ref(false);
@@ -74,14 +76,37 @@ async function askQuestion() {
   }
 }
 
-function useMockSourceFolder() {
+async function useMockSourceFolder() {
   const payload = {
     path: sourcePath.value,
     includeSubfolders: includeSubfolders.value
   };
 
-  console.log(payload);
-  sourceConfirmation.value = 'Mock source configured. This has not been saved yet.';
+  sourceError.value = '';
+  sourceJob.value = null;
+  isStartingSourceJob.value = true;
+  console.log('Starting mock processing job request', payload);
+
+  try {
+    const response = await fetch('/api/processing-jobs', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error('Mock processing job request failed');
+    }
+
+    sourceJob.value = await response.json();
+    console.log('Starting mock processing job response', sourceJob.value);
+  } catch (requestError) {
+    sourceError.value = requestError.message;
+  } finally {
+    isStartingSourceJob.value = false;
+  }
 }
 
 onMounted(loadDashboard);
@@ -115,7 +140,9 @@ onMounted(loadDashboard);
             name="sourcePath"
             autocomplete="off"
           />
-          <button type="submit">Use this folder</button>
+          <button type="submit" :disabled="isStartingSourceJob">
+            {{ isStartingSourceJob ? 'Starting...' : 'Use this folder' }}
+          </button>
         </div>
 
         <label class="checkbox-row">
@@ -123,7 +150,20 @@ onMounted(loadDashboard);
           <span>Include subfolders</span>
         </label>
 
-        <p v-if="sourceConfirmation" class="confirmation-message">{{ sourceConfirmation }}</p>
+        <p v-if="sourceError" class="source-error">{{ sourceError }}</p>
+
+        <article v-if="sourceJob" class="source-job-result">
+          <div>
+            <span class="label">Job ID</span>
+            <strong>{{ sourceJob.jobId }}</strong>
+          </div>
+          <div>
+            <span class="label">Status</span>
+            <strong>{{ sourceJob.status }}</strong>
+          </div>
+          <p>{{ sourceJob.message }}</p>
+          <span>{{ sourceJob.pollUrl }}</span>
+        </article>
       </form>
 
       <div class="folder-list">

@@ -3,8 +3,11 @@ package com.example.localdocumentassistant.api;
 import java.time.Instant;
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,6 +40,33 @@ public class MockApiController {
         );
     }
 
+    @PostMapping("/processing-jobs")
+    public ResponseEntity<StartProcessingJobResponse> startProcessingJob(
+            @RequestBody StartProcessingJobRequest request
+    ) {
+        StartProcessingJobResponse response = new StartProcessingJobResponse(
+                "mock-job-001",
+                "STARTED",
+                "Mock processing job started. No files are being scanned yet.",
+                "/api/processing-jobs/mock-job-001"
+        );
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    @GetMapping("/processing-jobs/{jobId}")
+    public ProcessingJobResponse processingJob(@PathVariable String jobId) {
+        return new ProcessingJobResponse(
+                jobId,
+                "Indexing mocked documents",
+                "RUNNING",
+                12,
+                8,
+                67,
+                Instant.parse("2026-06-18T09:35:00Z")
+        );
+    }
+
     @PostMapping("/questions")
     public QuestionResponse askQuestion(@RequestBody QuestionRequest request) {
         String question = request.question() == null || request.question().isBlank()
@@ -65,6 +95,12 @@ public class MockApiController {
             int totalDocuments,
             Instant startedAt
     ) {
+    }
+
+    public record StartProcessingJobRequest(String path, boolean includeSubfolders) {
+    }
+
+    public record StartProcessingJobResponse(String jobId, String status, String message, String pollUrl) {
     }
 
     public record QuestionRequest(String question) {

@@ -150,6 +150,12 @@ textarea {
   cursor: pointer;
 }
 
+.source-path-row button:disabled,
+.chat-panel button:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
 .checkbox-row {
   display: inline-flex;
   align-items: center;
@@ -167,6 +173,42 @@ textarea {
   margin: 2px 0 0;
   color: #28624f;
   font-size: 0.94rem;
+}
+
+.source-error {
+  margin: 2px 0 0;
+  color: #9a3412;
+  font-size: 0.94rem;
+}
+
+.source-job-result {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+  padding: 12px;
+  border: 1px solid #d8e7df;
+  border-radius: 6px;
+  background: #f2faf6;
+}
+
+.source-job-result div {
+  display: grid;
+  gap: 3px;
+}
+
+.source-job-result p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #2f5d4f;
+  line-height: 1.45;
+}
+
+.source-job-result > span {
+  grid-column: 1 / -1;
+  color: #68747c;
+  font-size: 0.94rem;
+  overflow-wrap: anywhere;
 }
 
 .folder-list {
@@ -300,11 +342,6 @@ textarea {
   justify-self: end;
 }
 
-.chat-panel button:disabled {
-  cursor: wait;
-  opacity: 0.68;
-}
-
 .answer {
   margin-top: 16px;
   padding: 16px;
@@ -360,6 +397,7 @@ textarea {
   .folder-row,
   .job-summary,
   .source-path-row,
+  .source-job-result,
   .status-grid,
   .source-grid {
     grid-template-columns: 1fr;
