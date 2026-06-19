@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.example.localdocumentassistant.api.MockApiController.ProcessingJobResponse;
@@ -13,14 +15,26 @@ import com.example.localdocumentassistant.api.MockApiController.StartProcessingJ
 @Service
 public class ProcessingJobService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProcessingJobService.class);
+
+    private final DocumentSourceRepository documentSourceRepository;
     private final InMemoryProcessingJobRepository processingJobRepository;
     private final AtomicInteger jobSequence = new AtomicInteger();
 
-    public ProcessingJobService(InMemoryProcessingJobRepository processingJobRepository) {
+    public ProcessingJobService(
+            DocumentSourceRepository documentSourceRepository,
+            InMemoryProcessingJobRepository processingJobRepository
+    ) {
+        this.documentSourceRepository = documentSourceRepository;
         this.processingJobRepository = processingJobRepository;
     }
 
     public StartProcessingJobResponse startProcessingJob(StartProcessingJobRequest request) {
+        DocumentSource source = new DocumentSource(request.path(), request.includeSubfolders(), "PROCESSING");
+        documentSourceRepository.save(source);
+        LOGGER.info("Saved mocked document source path={} includeSubfolders={} status={}",
+                source.path(), source.includeSubfolders(), source.status());
+
         String jobId = "mock-job-%03d".formatted(jobSequence.incrementAndGet());
         processingJobRepository.save(new MockProcessingJob(jobId, Instant.now()));
 
