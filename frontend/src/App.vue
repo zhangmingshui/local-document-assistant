@@ -8,17 +8,22 @@ const includeSubfolders = ref(true);
 const sourceJob = ref(null);
 const isStartingSourceJob = ref(false);
 const sourceError = ref('');
+const processingStatusResponse = ref(null);
+const isRefreshingStatus = ref(false);
+const refreshError = ref('');
 const question = ref('What changed in the latest mock project notes?');
 const answer = ref(null);
 const isAsking = ref(false);
 const error = ref('');
 
+const displayedProcessingJob = computed(() => processingStatusResponse.value ?? latestJob.value);
+
 const processingSummary = computed(() => {
-  if (!latestJob.value) {
+  if (!displayedProcessingJob.value) {
     return null;
   }
 
-  const processed = latestJob.value.processedDocuments;
+  const processed = displayedProcessingJob.value.processedDocuments;
   const failed = 2;
   const skipped = 3;
   const successful = Math.max(processed - failed - skipped, 0);
@@ -84,6 +89,8 @@ async function useMockSourceFolder() {
 
   sourceError.value = '';
   sourceJob.value = null;
+  processingStatusResponse.value = null;
+  refreshError.value = '';
   isStartingSourceJob.value = true;
   console.log('Starting mock processing job request', payload);
 
@@ -106,6 +113,35 @@ async function useMockSourceFolder() {
     sourceError.value = requestError.message;
   } finally {
     isStartingSourceJob.value = false;
+  }
+}
+
+async function refreshProcessingStatus() {
+  if (!sourceJob.value?.pollUrl) {
+    refreshError.value = 'Start a mock processing job before refreshing status.';
+    return;
+  }
+
+  refreshError.value = '';
+  isRefreshingStatus.value = true;
+  console.log('Refreshing mock processing status request', {
+    jobId: sourceJob.value.jobId,
+    pollUrl: sourceJob.value.pollUrl
+  });
+
+  try {
+    const response = await fetch(sourceJob.value.pollUrl);
+
+    if (!response.ok) {
+      throw new Error('Mock processing status request failed');
+    }
+
+    processingStatusResponse.value = await response.json();
+    console.log('Refreshing mock processing status response', processingStatusResponse.value);
+  } catch (requestError) {
+    refreshError.value = requestError.message;
+  } finally {
+    isRefreshingStatus.value = false;
   }
 }
 
@@ -183,16 +219,36 @@ onMounted(loadDashboard);
         <div>
           <p class="eyebrow">Processing</p>
           <h2>Status</h2>
-          <p>Latest mocked job from the backend.</p>
+          <p>Manual refresh for the current mocked processing job.</p>
         </div>
-        <span v-if="latestJob" class="status-badge">{{ latestJob.status }}</span>
+        <span v-if="displayedProcessingJob" class="status-badge">{{ displayedProcessingJob.status }}</span>
       </div>
 
-      <template v-if="latestJob && processingSummary">
+      <div class="refresh-panel">
+        <div>
+          <span class="label">Current job ID</span>
+          <strong>{{ sourceJob?.jobId ?? 'No started job yet' }}</strong>
+        </div>
+        <div>
+          <span class="label">Poll URL</span>
+          <strong>{{ sourceJob?.pollUrl ?? 'Start a mocked job to get a poll URL' }}</strong>
+        </div>
+        <button type="button" :disabled="!sourceJob || isRefreshingStatus" @click="refreshProcessingStatus">
+          {{ isRefreshingStatus ? 'Refreshing...' : 'Refresh status' }}
+        </button>
+      </div>
+
+      <p v-if="refreshError" class="source-error">{{ refreshError }}</p>
+
+      <template v-if="displayedProcessingJob && processingSummary">
         <div class="job-summary">
           <div>
+            <span class="label">Latest response ID</span>
+            <strong>{{ displayedProcessingJob.id }}</strong>
+          </div>
+          <div>
             <span class="label">Job</span>
-            <strong>{{ latestJob.name }}</strong>
+            <strong>{{ displayedProcessingJob.name }}</strong>
           </div>
           <div>
             <span class="label">Current step</span>
@@ -201,12 +257,12 @@ onMounted(loadDashboard);
         </div>
 
         <div class="progress-header">
-          <span>{{ latestJob.progressPercent }}% complete</span>
-          <strong>{{ latestJob.processedDocuments }} / {{ latestJob.totalDocuments }} files</strong>
+          <span>{{ displayedProcessingJob.progressPercent }}% complete</span>
+          <strong>{{ displayedProcessingJob.processedDocuments }} / {{ displayedProcessingJob.totalDocuments }} files</strong>
         </div>
 
         <div class="progress-track" aria-label="Processing progress">
-          <div class="progress-fill" :style="{ width: `${latestJob.progressPercent}%` }"></div>
+          <div class="progress-fill" :style="{ width: `${displayedProcessingJob.progressPercent}%` }"></div>
         </div>
 
         <div class="status-grid">
