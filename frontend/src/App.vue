@@ -17,6 +17,7 @@ const refreshError = ref('');
 const question = ref('What changed in the latest mock project notes?');
 const answer = ref(null);
 const isAsking = ref(false);
+const questionError = ref('');
 const error = ref('');
 
 const displayedProcessingJob = computed(() => processingStatusResponse.value ?? latestJob.value);
@@ -58,8 +59,10 @@ async function loadDashboard() {
 }
 
 async function askQuestion() {
-  error.value = '';
+  questionError.value = '';
   isAsking.value = true;
+  const payload = { question: question.value };
+  console.log('Mock question request', payload);
 
   try {
     const response = await fetch('/api/questions', {
@@ -67,16 +70,19 @@ async function askQuestion() {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ question: question.value })
+      body: JSON.stringify(payload)
     });
 
+    const responseBody = await response.json();
+
     if (!response.ok) {
-      throw new Error('Mock question request failed');
+      throw new Error(responseBody.message ?? 'Mock question request failed');
     }
 
-    answer.value = await response.json();
+    answer.value = responseBody;
+    console.log('Mock question response', answer.value);
   } catch (requestError) {
-    error.value = requestError.message;
+    questionError.value = requestError.message;
   } finally {
     isAsking.value = false;
   }
@@ -338,6 +344,9 @@ onUnmounted(stopPollingStatus);
 
       <form class="chat-panel" @submit.prevent="askQuestion">
         <label for="question">Question</label>
+        <p v-if="!isProcessingComplete" class="helper-message">
+          This is currently mocked. In the real app, answers will use indexed documents.
+        </p>
         <textarea
           id="question"
           v-model="question"
@@ -350,13 +359,17 @@ onUnmounted(stopPollingStatus);
         </button>
       </form>
 
+      <p v-if="questionError" class="source-error">{{ questionError }}</p>
+
       <article v-if="answer" class="answer">
         <span class="assistant-label">Mocked answer</span>
         <p>{{ answer.answer }}</p>
         <div class="source-grid">
-          <article v-for="citation in answer.citations" :key="citation.path" class="source-card-item">
-            <strong>{{ citation.title }}</strong>
-            <span>{{ citation.path }}</span>
+          <article v-for="source in answer.sources" :key="`${source.filePath}-${source.chunkNumber}`" class="source-card-item">
+            <strong>{{ source.fileName }}</strong>
+            <span>{{ source.filePath }}</span>
+            <small>Chunk {{ source.chunkNumber }}</small>
+            <p>{{ source.text }}</p>
           </article>
         </div>
       </article>

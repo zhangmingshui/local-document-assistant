@@ -373,6 +373,13 @@ textarea {
   font-weight: 750;
 }
 
+.helper-message {
+  margin: -4px 0 2px;
+  color: #68747c;
+  font-size: 0.94rem;
+  line-height: 1.45;
+}
+
 .chat-panel textarea {
   width: 100%;
   resize: vertical;
@@ -415,6 +422,17 @@ textarea {
   border: 1px solid #dfe7e3;
   border-radius: 6px;
   background: #ffffff;
+}
+
+.source-card-item small {
+  color: #53616b;
+  font-weight: 750;
+}
+
+.source-card-item p {
+  margin: 4px 0 0;
+  color: #34434c;
+  line-height: 1.45;
 }
 
 .error {

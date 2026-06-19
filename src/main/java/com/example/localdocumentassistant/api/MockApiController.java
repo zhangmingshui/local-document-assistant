@@ -80,19 +80,34 @@ public class MockApiController {
     }
 
     @PostMapping("/questions")
-    public QuestionResponse askQuestion(@RequestBody QuestionRequest request) {
-        String question = request.question() == null || request.question().isBlank()
-                ? "your mocked question"
-                : request.question();
+    public ResponseEntity<?> askQuestion(@RequestBody QuestionRequest request) {
+        if (request.question() == null || request.question().isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(new ErrorResponse("Question must not be blank."));
+        }
 
-        return new QuestionResponse(
-                question,
-                "This is a mocked answer for: \"" + question + "\". No files were read and no model was called.",
+        String question = request.question().trim();
+
+        QuestionResponse response = new QuestionResponse(
+                "Based on mocked indexed documents, the answer to \"" + question
+                        + "\" is that this prototype can show a realistic Q&A flow without retrieval or model calls.",
                 List.of(
-                        new CitationResponse("Mock Project Notes", "/Users/demo/Documents/Mock Research/project-notes.pdf"),
-                        new CitationResponse("Mock Invoice Summary", "/Users/demo/Documents/Mock Invoices/invoice-summary.pdf")
+                        new SourceResponse(
+                                "project-notes.pdf",
+                                "/Users/demo/Documents/Mock Research/project-notes.pdf",
+                                3,
+                                "Mock excerpt: the local assistant should answer from indexed document snippets once real retrieval exists."
+                        ),
+                        new SourceResponse(
+                                "invoice-summary.pdf",
+                                "/Users/demo/Documents/Mock Invoices/invoice-summary.pdf",
+                                1,
+                                "Mock excerpt: source cards show where an answer might have come from after indexing is implemented."
+                        )
                 )
         );
+
+        return ResponseEntity.ok(response);
     }
 
     public record FolderResponse(String id, String path, int documentCount) {
@@ -122,10 +137,10 @@ public class MockApiController {
     public record QuestionRequest(String question) {
     }
 
-    public record QuestionResponse(String question, String answer, List<CitationResponse> citations) {
+    public record QuestionResponse(String answer, List<SourceResponse> sources) {
     }
 
-    public record CitationResponse(String title, String path) {
+    public record SourceResponse(String fileName, String filePath, int chunkNumber, String text) {
     }
 
     public record ErrorResponse(String message) {
