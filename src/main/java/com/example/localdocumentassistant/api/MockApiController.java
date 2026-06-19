@@ -62,7 +62,7 @@ public class MockApiController {
 
     @GetMapping("/processing-jobs/{jobId}")
     public ResponseEntity<?> processingJob(@PathVariable String jobId) {
-        return processingJobService.advanceProcessingJob(jobId)
+        return processingJobService.pollProcessingJobStatus(jobId)
                 .<ResponseEntity<?>>map(job -> ResponseEntity.ok(job))
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(new ErrorResponse("No mocked processing job found for id: " + jobId)));

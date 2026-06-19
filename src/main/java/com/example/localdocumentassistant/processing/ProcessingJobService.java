@@ -1,9 +1,7 @@
 package com.example.localdocumentassistant.processing;
 
 import java.time.Instant;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.stereotype.Service;
@@ -15,12 +13,16 @@ import com.example.localdocumentassistant.api.MockApiController.StartProcessingJ
 @Service
 public class ProcessingJobService {
 
-    private final Map<String, MockProcessingJob> processingJobs = new ConcurrentHashMap<>();
+    private final InMemoryProcessingJobRepository processingJobRepository;
     private final AtomicInteger jobSequence = new AtomicInteger();
+
+    public ProcessingJobService(InMemoryProcessingJobRepository processingJobRepository) {
+        this.processingJobRepository = processingJobRepository;
+    }
 
     public StartProcessingJobResponse startProcessingJob(StartProcessingJobRequest request) {
         String jobId = "mock-job-%03d".formatted(jobSequence.incrementAndGet());
-        processingJobs.put(jobId, new MockProcessingJob(jobId, Instant.now()));
+        processingJobRepository.save(new MockProcessingJob(jobId, Instant.now()));
 
         return new StartProcessingJobResponse(
                 jobId,
@@ -30,17 +32,12 @@ public class ProcessingJobService {
         );
     }
 
-    public Optional<ProcessingJobResponse> advanceProcessingJob(String jobId) {
-        MockProcessingJob job = processingJobs.get(jobId);
-
-        if (job == null) {
-            return Optional.empty();
-        }
-
-        return Optional.of(job.advanceAndSnapshot());
+    public Optional<ProcessingJobResponse> pollProcessingJobStatus(String jobId) {
+        return processingJobRepository.findById(jobId)
+                .map(MockProcessingJob::advanceAndSnapshot);
     }
 
-    private static class MockProcessingJob {
+    static class MockProcessingJob {
         private static final int TOTAL_FILES = 20;
 
         private final String id;
@@ -50,6 +47,10 @@ public class ProcessingJobService {
         MockProcessingJob(String id, Instant startedAt) {
             this.id = id;
             this.startedAt = startedAt;
+        }
+
+        String id() {
+            return id;
         }
 
         synchronized ProcessingJobResponse advanceAndSnapshot() {
