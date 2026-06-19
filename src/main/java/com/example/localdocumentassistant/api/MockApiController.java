@@ -2,9 +2,6 @@ package com.example.localdocumentassistant.api;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,13 +13,18 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.localdocumentassistant.processing.ProcessingJobService;
+
 @RestController
 @RequestMapping("/api")
 @CrossOrigin(origins = "http://localhost:5173")
 public class MockApiController {
 
-    private final Map<String, MockProcessingJob> processingJobs = new ConcurrentHashMap<>();
-    private final AtomicInteger jobSequence = new AtomicInteger();
+    private final ProcessingJobService processingJobService;
+
+    public MockApiController(ProcessingJobService processingJobService) {
+        this.processingJobService = processingJobService;
+    }
 
     @GetMapping("/folders")
     public List<FolderResponse> folders() {
@@ -54,29 +56,16 @@ public class MockApiController {
     public ResponseEntity<StartProcessingJobResponse> startProcessingJob(
             @RequestBody StartProcessingJobRequest request
     ) {
-        String jobId = "mock-job-%03d".formatted(jobSequence.incrementAndGet());
-        processingJobs.put(jobId, new MockProcessingJob(jobId, Instant.now()));
-
-        StartProcessingJobResponse response = new StartProcessingJobResponse(
-                jobId,
-                "QUEUED",
-                "Mock processing job started. No files are being scanned yet.",
-                "/api/processing-jobs/" + jobId
-        );
-
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(processingJobService.startProcessingJob(request));
     }
 
     @GetMapping("/processing-jobs/{jobId}")
     public ResponseEntity<?> processingJob(@PathVariable String jobId) {
-        MockProcessingJob job = processingJobs.get(jobId);
-
-        if (job == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ErrorResponse("No mocked processing job found for id: " + jobId));
-        }
-
-        return ResponseEntity.ok(job.advanceAndSnapshot());
+        return processingJobService.advanceProcessingJob(jobId)
+                .<ResponseEntity<?>>map(job -> ResponseEntity.ok(job))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ErrorResponse("No mocked processing job found for id: " + jobId)));
     }
 
     @PostMapping("/questions")
@@ -144,64 +133,5 @@ public class MockApiController {
     }
 
     public record ErrorResponse(String message) {
-    }
-
-    private static class MockProcessingJob {
-        private static final int TOTAL_FILES = 20;
-
-        private final String id;
-        private final Instant startedAt;
-        private int processedFiles;
-
-        MockProcessingJob(String id, Instant startedAt) {
-            this.id = id;
-            this.startedAt = startedAt;
-        }
-
-        synchronized ProcessingJobResponse advanceAndSnapshot() {
-            processedFiles = Math.min(processedFiles + 5, TOTAL_FILES);
-
-            int failedFiles = processedFiles == TOTAL_FILES ? 1 : 0;
-            int skippedFiles = processedFiles == TOTAL_FILES ? 1 : 0;
-            int successfulFiles = Math.max(processedFiles - failedFiles - skippedFiles, 0);
-
-            return new ProcessingJobResponse(
-                    id,
-                    "Indexing mocked documents",
-                    status(),
-                    processedFiles * 100 / TOTAL_FILES,
-                    processedFiles,
-                    TOTAL_FILES,
-                    successfulFiles,
-                    failedFiles,
-                    skippedFiles,
-                    currentStep(),
-                    startedAt
-            );
-        }
-
-        private String status() {
-            if (processedFiles == 0) {
-                return "QUEUED";
-            }
-
-            if (processedFiles == TOTAL_FILES) {
-                return "COMPLETED_WITH_ERRORS";
-            }
-
-            return "RUNNING";
-        }
-
-        private String currentStep() {
-            if (processedFiles == TOTAL_FILES) {
-                return "Mock run completed with one failed file and one skipped file";
-            }
-
-            if (processedFiles <= 5) {
-                return "Preparing mocked file list";
-            }
-
-            return "Updating mocked processing counters";
-        }
     }
 }
