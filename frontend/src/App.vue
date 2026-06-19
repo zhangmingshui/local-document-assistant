@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 const folders = ref([]);
 const latestJob = ref(null);
@@ -10,6 +10,9 @@ const isStartingSourceJob = ref(false);
 const sourceError = ref('');
 const processingStatusResponse = ref(null);
 const isRefreshingStatus = ref(false);
+const isPollingStatus = ref(false);
+const pollingTimerId = ref(null);
+const lastRefreshedAt = ref('');
 const refreshError = ref('');
 const question = ref('What changed in the latest mock project notes?');
 const answer = ref(null);
@@ -90,6 +93,8 @@ async function useMockSourceFolder() {
   sourceError.value = '';
   sourceJob.value = null;
   processingStatusResponse.value = null;
+  stopPollingStatus();
+  lastRefreshedAt.value = '';
   refreshError.value = '';
   isStartingSourceJob.value = true;
   console.log('Starting mock processing job request', payload);
@@ -122,6 +127,10 @@ async function refreshProcessingStatus() {
     return;
   }
 
+  if (isRefreshingStatus.value) {
+    return;
+  }
+
   refreshError.value = '';
   isRefreshingStatus.value = true;
   console.log('Refreshing mock processing status request', {
@@ -137,15 +146,37 @@ async function refreshProcessingStatus() {
     }
 
     processingStatusResponse.value = await response.json();
+    lastRefreshedAt.value = new Date().toLocaleTimeString();
     console.log('Refreshing mock processing status response', processingStatusResponse.value);
   } catch (requestError) {
     refreshError.value = requestError.message;
+    stopPollingStatus();
   } finally {
     isRefreshingStatus.value = false;
   }
 }
 
+function startPollingStatus() {
+  if (!sourceJob.value?.pollUrl || pollingTimerId.value) {
+    return;
+  }
+
+  isPollingStatus.value = true;
+  refreshProcessingStatus();
+  pollingTimerId.value = window.setInterval(refreshProcessingStatus, 3000);
+}
+
+function stopPollingStatus() {
+  if (pollingTimerId.value) {
+    window.clearInterval(pollingTimerId.value);
+    pollingTimerId.value = null;
+  }
+
+  isPollingStatus.value = false;
+}
+
 onMounted(loadDashboard);
+onUnmounted(stopPollingStatus);
 </script>
 
 <template>
@@ -233,10 +264,24 @@ onMounted(loadDashboard);
           <span class="label">Poll URL</span>
           <strong>{{ sourceJob?.pollUrl ?? 'Start a mocked job to get a poll URL' }}</strong>
         </div>
-        <button type="button" :disabled="!sourceJob || isRefreshingStatus" @click="refreshProcessingStatus">
-          {{ isRefreshingStatus ? 'Refreshing...' : 'Refresh status' }}
-        </button>
+        <div class="refresh-actions">
+          <button type="button" :disabled="!sourceJob || isRefreshingStatus" @click="refreshProcessingStatus">
+            {{ isRefreshingStatus ? 'Refreshing...' : 'Refresh status' }}
+          </button>
+          <button
+            type="button"
+            :disabled="!sourceJob"
+            class="secondary-action"
+            @click="isPollingStatus ? stopPollingStatus() : startPollingStatus()"
+          >
+            {{ isPollingStatus ? 'Stop polling' : 'Start polling' }}
+          </button>
+        </div>
       </div>
+
+      <p class="last-refreshed">
+        Last refreshed: {{ lastRefreshedAt || 'Not refreshed yet' }}
+      </p>
 
       <p v-if="refreshError" class="source-error">{{ refreshError }}</p>
 

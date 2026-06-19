@@ -139,7 +139,7 @@ textarea {
 }
 
 .source-path-row button,
-.refresh-panel button,
+.refresh-actions button,
 .chat-panel button {
   min-height: 42px;
   padding: 0 16px;
@@ -152,7 +152,7 @@ textarea {
 }
 
 .source-path-row button:disabled,
-.refresh-panel button:disabled,
+.refresh-actions button:disabled,
 .chat-panel button:disabled {
   cursor: wait;
   opacity: 0.68;
@@ -288,8 +288,27 @@ textarea {
   overflow-wrap: anywhere;
 }
 
-.refresh-panel button {
+.refresh-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.refresh-actions button {
   white-space: nowrap;
+}
+
+.refresh-actions .secondary-action {
+  border: 1px solid #c8d0d4;
+  background: #ffffff;
+  color: #23313b;
+}
+
+.last-refreshed {
+  margin: -8px 0 16px;
+  color: #68747c;
+  font-size: 0.94rem;
 }
 
 .job-summary {
@@ -437,8 +456,13 @@ textarea {
   }
 
   .source-path-row button,
-  .refresh-panel button,
+  .refresh-actions,
+  .refresh-actions button,
   .chat-panel button {
     justify-self: stretch;
+  }
+
+  .refresh-actions {
+    width: 100%;
   }
 }
