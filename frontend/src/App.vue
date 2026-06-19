@@ -20,22 +20,20 @@ const isAsking = ref(false);
 const error = ref('');
 
 const displayedProcessingJob = computed(() => processingStatusResponse.value ?? latestJob.value);
+const isProcessingComplete = computed(() => (
+  displayedProcessingJob.value?.status?.startsWith('COMPLETED') ?? false
+));
 
 const processingSummary = computed(() => {
   if (!displayedProcessingJob.value) {
     return null;
   }
 
-  const processed = displayedProcessingJob.value.processedDocuments;
-  const failed = 2;
-  const skipped = 3;
-  const successful = Math.max(processed - failed - skipped, 0);
-
   return {
-    successful,
-    failed,
-    skipped,
-    currentStep: 'Reading mocked metadata and preparing preview records'
+    successful: displayedProcessingJob.value.successfulFiles,
+    failed: displayedProcessingJob.value.failedFiles,
+    skipped: displayedProcessingJob.value.skippedFiles,
+    currentStep: displayedProcessingJob.value.currentStep
   };
 });
 
@@ -148,6 +146,10 @@ async function refreshProcessingStatus() {
     processingStatusResponse.value = await response.json();
     lastRefreshedAt.value = new Date().toLocaleTimeString();
     console.log('Refreshing mock processing status response', processingStatusResponse.value);
+
+    if (processingStatusResponse.value.status?.startsWith('COMPLETED')) {
+      stopPollingStatus();
+    }
   } catch (requestError) {
     refreshError.value = requestError.message;
     stopPollingStatus();
@@ -157,7 +159,7 @@ async function refreshProcessingStatus() {
 }
 
 function startPollingStatus() {
-  if (!sourceJob.value?.pollUrl || pollingTimerId.value) {
+  if (!sourceJob.value?.pollUrl || pollingTimerId.value || isProcessingComplete.value) {
     return;
   }
 
@@ -270,7 +272,7 @@ onUnmounted(stopPollingStatus);
           </button>
           <button
             type="button"
-            :disabled="!sourceJob"
+            :disabled="!sourceJob || isProcessingComplete"
             class="secondary-action"
             @click="isPollingStatus ? stopPollingStatus() : startPollingStatus()"
           >
@@ -303,7 +305,7 @@ onUnmounted(stopPollingStatus);
 
         <div class="progress-header">
           <span>{{ displayedProcessingJob.progressPercent }}% complete</span>
-          <strong>{{ displayedProcessingJob.processedDocuments }} / {{ displayedProcessingJob.totalDocuments }} files</strong>
+          <strong>{{ displayedProcessingJob.processedFiles }} / {{ displayedProcessingJob.totalFiles }} files</strong>
         </div>
 
         <div class="progress-track" aria-label="Processing progress">
