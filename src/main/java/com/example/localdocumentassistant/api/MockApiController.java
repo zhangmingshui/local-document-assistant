@@ -56,11 +56,21 @@ public class MockApiController {
     }
 
     @PostMapping("/processing-jobs")
-    public ResponseEntity<StartProcessingJobResponse> startProcessingJob(
+    public ResponseEntity<?> startProcessingJob(
             @RequestBody StartProcessingJobRequest request
     ) {
+        if (request == null || request.path() == null || request.path().isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(new ErrorResponse("Document source path must not be blank."));
+        }
+
+        StartProcessingJobRequest trimmedRequest = new StartProcessingJobRequest(
+                request.path().trim(),
+                request.includeSubfolders()
+        );
+
         return ResponseEntity.status(HttpStatus.ACCEPTED)
-                .body(processingJobService.startProcessingJob(request));
+                .body(processingJobService.startProcessingJob(trimmedRequest));
     }
 
     @GetMapping("/processing-jobs/{jobId}")
