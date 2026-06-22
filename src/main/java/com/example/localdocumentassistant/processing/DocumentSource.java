@@ -1,4 +1,4 @@
 package com.example.localdocumentassistant.processing;
 
-public record DocumentSource(String path, boolean includeSubfolders, String status) {
+public record DocumentSource(Long id, String path, boolean includeSubfolders, String status) {
 }

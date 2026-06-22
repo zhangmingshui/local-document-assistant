@@ -18,7 +18,7 @@ public class DocumentSourceService {
         return documentSourceRepository.findAll().stream()
                 .sorted(Comparator.comparing(DocumentSource::path))
                 .map(source -> new DocumentSourceSummary(
-                        source.path(),
+                        source.id(),
                         source.path(),
                         0,
                         source.includeSubfolders(),
@@ -28,7 +28,7 @@ public class DocumentSourceService {
     }
 
     public record DocumentSourceSummary(
-            String id,
+            Long id,
             String path,
             int documentCount,
             boolean includeSubfolders,

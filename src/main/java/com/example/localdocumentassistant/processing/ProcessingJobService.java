@@ -30,10 +30,11 @@ public class ProcessingJobService {
     }
 
     public StartProcessingJobResponse startProcessingJob(StartProcessingJobRequest request) {
-        DocumentSource source = new DocumentSource(request.path(), request.includeSubfolders(), "CONFIGURED");
-        documentSourceRepository.create(source);
-        LOGGER.info("Registered SQLite document source path={} includeSubfolders={} status={}",
-                source.path(), source.includeSubfolders(), source.status());
+        DocumentSource source = documentSourceRepository.create(
+                new DocumentSource(null, request.path(), request.includeSubfolders(), "CONFIGURED")
+        );
+        LOGGER.info("Registered SQLite document source id={} path={} includeSubfolders={} status={}",
+                source.id(), source.path(), source.includeSubfolders(), source.status());
 
         String jobId = "mock-job-%03d".formatted(jobSequence.incrementAndGet());
         processingJobRepository.save(new MockProcessingJob(jobId, Instant.now()));
