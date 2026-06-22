@@ -59,7 +59,7 @@ public class MockDocumentProcessingService {
                 currentJob.id(),
                 currentJob.jobId(),
                 currentJob.watchedFolderId(),
-                complete ? "COMPLETED_WITH_ERRORS" : "RUNNING",
+                complete ? ProcessingJobStatus.COMPLETED_WITH_ERRORS : ProcessingJobStatus.RUNNING,
                 currentJob.totalFiles(),
                 processedFiles,
                 successfulFiles,

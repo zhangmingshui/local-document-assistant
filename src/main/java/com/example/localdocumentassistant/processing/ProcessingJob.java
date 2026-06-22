@@ -4,7 +4,7 @@ public record ProcessingJob(
         Long id,
         String jobId,
         Long watchedFolderId,
-        String status,
+        ProcessingJobStatus status,
         int totalFiles,
         int processedFiles,
         int successfulFiles,

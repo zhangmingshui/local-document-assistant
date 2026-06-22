@@ -17,6 +17,7 @@ import com.example.localdocumentassistant.processing.DocumentSourceService;
 import com.example.localdocumentassistant.processing.DocumentSourceService.DocumentSourceSummary;
 import com.example.localdocumentassistant.processing.DuplicateDocumentSourceException;
 import com.example.localdocumentassistant.processing.ProcessingJobService;
+import com.example.localdocumentassistant.processing.ProcessingJobStatus;
 
 @RestController
 @RequestMapping("/api")
@@ -44,7 +45,7 @@ public class MockApiController {
         return new ProcessingJobResponse(
                 "job-2026-001",
                 "Indexing mocked documents",
-                "RUNNING",
+                ProcessingJobStatus.RUNNING.name(),
                 68,
                 46,
                 67,

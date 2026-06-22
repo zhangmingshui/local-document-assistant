@@ -50,7 +50,7 @@ public class JdbcProcessingJobRepository implements ProcessingJobRepository {
             );
             statement.setString(1, job.jobId());
             statement.setLong(2, job.watchedFolderId());
-            statement.setString(3, job.status());
+            statement.setString(3, job.status().name());
             statement.setInt(4, job.totalFiles());
             statement.setInt(5, job.processedFiles());
             statement.setInt(6, job.successfulFiles());
@@ -101,7 +101,7 @@ public class JdbcProcessingJobRepository implements ProcessingJobRepository {
                         rs.getLong("id"),
                         rs.getString("job_id"),
                         rs.getLong("watched_folder_id"),
-                        rs.getString("status"),
+                        ProcessingJobStatus.valueOf(rs.getString("status")),
                         rs.getInt("total_files"),
                         rs.getInt("processed_files"),
                         rs.getInt("successful_files"),
@@ -140,7 +140,7 @@ public class JdbcProcessingJobRepository implements ProcessingJobRepository {
                             updated_at = ?
                         WHERE id = ?
                         """,
-                job.status(),
+                job.status().name(),
                 job.totalFiles(),
                 job.processedFiles(),
                 job.successfulFiles(),

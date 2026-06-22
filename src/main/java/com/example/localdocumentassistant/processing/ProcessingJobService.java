@@ -44,7 +44,7 @@ public class ProcessingJobService {
                 null,
                 jobId,
                 source.id(),
-                "PENDING",
+                ProcessingJobStatus.PENDING,
                 MOCK_TOTAL_FILES,
                 0,
                 0,
@@ -61,7 +61,7 @@ public class ProcessingJobService {
 
         return new StartProcessingJobResponse(
                 job.jobId(),
-                job.status(),
+                job.status().name(),
                 "Mock processing job started. No files are being scanned yet.",
                 "/api/processing-jobs/" + job.jobId()
         );
@@ -76,7 +76,7 @@ public class ProcessingJobService {
         return new ProcessingJobResponse(
                 job.jobId(),
                 "Indexing mocked documents",
-                job.status(),
+                job.status().name(),
                 job.processedFiles() * 100 / job.totalFiles(),
                 job.processedFiles(),
                 job.totalFiles(),
