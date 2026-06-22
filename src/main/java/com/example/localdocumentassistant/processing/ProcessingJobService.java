@@ -17,12 +17,12 @@ public class ProcessingJobService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProcessingJobService.class);
 
-    private final InMemoryDocumentSourceRepository documentSourceRepository;
+    private final DocumentSourceRepository documentSourceRepository;
     private final InMemoryProcessingJobRepository processingJobRepository;
     private final AtomicInteger jobSequence = new AtomicInteger();
 
     public ProcessingJobService(
-            InMemoryDocumentSourceRepository documentSourceRepository,
+            DocumentSourceRepository documentSourceRepository,
             InMemoryProcessingJobRepository processingJobRepository
     ) {
         this.documentSourceRepository = documentSourceRepository;
@@ -30,9 +30,9 @@ public class ProcessingJobService {
     }
 
     public StartProcessingJobResponse startProcessingJob(StartProcessingJobRequest request) {
-        DocumentSource source = new DocumentSource(request.path(), request.includeSubfolders(), "PROCESSING");
-        documentSourceRepository.save(source);
-        LOGGER.info("Saved mocked document source path={} includeSubfolders={} status={}",
+        DocumentSource source = new DocumentSource(request.path(), request.includeSubfolders(), "CONFIGURED");
+        documentSourceRepository.create(source);
+        LOGGER.info("Registered SQLite document source path={} includeSubfolders={} status={}",
                 source.path(), source.includeSubfolders(), source.status());
 
         String jobId = "mock-job-%03d".formatted(jobSequence.incrementAndGet());

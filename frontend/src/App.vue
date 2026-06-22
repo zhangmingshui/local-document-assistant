@@ -158,6 +158,7 @@ onUnmounted(stopPollingStatus);
       :loading="isStartingSourceJob"
       :error="sourceError"
       @start-processing="useMockSourceFolder"
+      @clear-error="sourceError = ''"
     />
 
     <ProcessingStatus

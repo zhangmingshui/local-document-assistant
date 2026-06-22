@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.localdocumentassistant.processing.DocumentSourceService;
 import com.example.localdocumentassistant.processing.DocumentSourceService.DocumentSourceSummary;
+import com.example.localdocumentassistant.processing.DuplicateDocumentSourceException;
 import com.example.localdocumentassistant.processing.ProcessingJobService;
 
 @RestController
@@ -69,8 +70,13 @@ public class MockApiController {
                 request.includeSubfolders()
         );
 
-        return ResponseEntity.status(HttpStatus.ACCEPTED)
-                .body(processingJobService.startProcessingJob(trimmedRequest));
+        try {
+            return ResponseEntity.status(HttpStatus.ACCEPTED)
+                    .body(processingJobService.startProcessingJob(trimmedRequest));
+        } catch (DuplicateDocumentSourceException duplicateError) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ErrorResponse(duplicateError.getMessage()));
+        }
     }
 
     @GetMapping("/processing-jobs/{jobId}")

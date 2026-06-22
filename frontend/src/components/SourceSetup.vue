@@ -20,7 +20,7 @@ defineProps({
   }
 });
 
-const emit = defineEmits(['start-processing']);
+const emit = defineEmits(['start-processing', 'clear-error']);
 
 const sourcePath = ref('/Users/example/Documents/LocalDocs');
 const includeSubfolders = ref(true);
@@ -49,18 +49,19 @@ function submitSource() {
           v-model="sourcePath"
           name="sourcePath"
           autocomplete="off"
+          @input="emit('clear-error')"
         />
         <button type="submit" :disabled="loading">
           {{ loading ? 'Starting...' : 'Use this folder' }}
         </button>
       </div>
 
+      <p v-if="error" class="source-error">{{ error }}</p>
+
       <label class="checkbox-row">
         <input v-model="includeSubfolders" type="checkbox" />
         <span>Include subfolders</span>
       </label>
-
-      <p v-if="error" class="source-error">{{ error }}</p>
 
       <article v-if="sourceJob" class="source-job-result">
         <div>

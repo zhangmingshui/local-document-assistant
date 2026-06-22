@@ -1,5 +1,6 @@
 package com.example.localdocumentassistant.processing;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,6 +14,35 @@ public class JdbcDocumentSourceRepository implements DocumentSourceRepository {
 
     public JdbcDocumentSourceRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
+    }
+
+    @Override
+    public DocumentSource create(DocumentSource source) {
+        if (findByPath(source.path()).isPresent()) {
+            throw new DuplicateDocumentSourceException("This directory is already configured. Choose another directory.");
+        }
+
+        String now = Instant.now().toString();
+        jdbcTemplate.update(
+                """
+                        INSERT INTO watched_folders (
+                            path,
+                            enabled,
+                            include_subfolders,
+                            status,
+                            created_at,
+                            updated_at
+                        )
+                        VALUES (?, 1, ?, ?, ?, ?)
+                        """,
+                source.path(),
+                source.includeSubfolders() ? 1 : 0,
+                source.status(),
+                now,
+                now
+        );
+
+        return source;
     }
 
     @Override
