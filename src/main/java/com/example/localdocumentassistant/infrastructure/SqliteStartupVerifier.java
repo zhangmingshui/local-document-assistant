@@ -48,6 +48,38 @@ public class SqliteStartupVerifier implements ApplicationRunner {
                 FOREIGN KEY (watched_folder_id) REFERENCES watched_folders(id)
             )
             """;
+    private static final String DOCUMENTS_TABLE = """
+            CREATE TABLE IF NOT EXISTS documents (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                document_uuid TEXT NOT NULL UNIQUE,
+                watched_folder_id INTEGER NOT NULL,
+                file_path TEXT NOT NULL,
+                file_name TEXT NOT NULL,
+                file_type TEXT,
+                file_size INTEGER,
+                last_modified_at TEXT,
+                content_hash TEXT,
+                processing_status TEXT NOT NULL DEFAULT 'DISCOVERED',
+                chunk_count INTEGER NOT NULL DEFAULT 0,
+                last_processed_at TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(watched_folder_id, file_path),
+                FOREIGN KEY (watched_folder_id) REFERENCES watched_folders(id)
+            )
+            """;
+    private static final String DOCUMENTS_WATCHED_FOLDER_INDEX = """
+            CREATE INDEX IF NOT EXISTS idx_documents_watched_folder_id
+            ON documents(watched_folder_id)
+            """;
+    private static final String DOCUMENTS_DOCUMENT_UUID_INDEX = """
+            CREATE INDEX IF NOT EXISTS idx_documents_document_uuid
+            ON documents(document_uuid)
+            """;
+    private static final String DOCUMENTS_CONTENT_HASH_INDEX = """
+            CREATE INDEX IF NOT EXISTS idx_documents_content_hash
+            ON documents(content_hash)
+            """;
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -64,9 +96,14 @@ public class SqliteStartupVerifier implements ApplicationRunner {
 
         jdbcTemplate.execute(WATCHED_FOLDERS_TABLE);
         jdbcTemplate.execute(PROCESSING_JOBS_TABLE);
+        jdbcTemplate.execute(DOCUMENTS_TABLE);
+        jdbcTemplate.execute(DOCUMENTS_WATCHED_FOLDER_INDEX);
+        jdbcTemplate.execute(DOCUMENTS_DOCUMENT_UUID_INDEX);
+        jdbcTemplate.execute(DOCUMENTS_CONTENT_HASH_INDEX);
 
         verifyTableExists("watched_folders");
         verifyTableExists("processing_jobs");
+        verifyTableExists("documents");
     }
 
     private void verifyTableExists(String tableName) {
