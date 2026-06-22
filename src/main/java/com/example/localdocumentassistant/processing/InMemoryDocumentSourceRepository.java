@@ -9,21 +9,18 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public class InMemoryDocumentSourceRepository implements DocumentSourceRepository {
+public class InMemoryDocumentSourceRepository {
 
     private final Map<String, DocumentSource> sourcesByPath = new ConcurrentHashMap<>();
 
-    @Override
     public void save(DocumentSource source) {
         sourcesByPath.put(source.path(), source);
     }
 
-    @Override
     public Optional<DocumentSource> findByPath(String path) {
         return Optional.ofNullable(sourcesByPath.get(path));
     }
 
-    @Override
     public List<DocumentSource> findAll() {
         return new ArrayList<>(sourcesByPath.values());
     }

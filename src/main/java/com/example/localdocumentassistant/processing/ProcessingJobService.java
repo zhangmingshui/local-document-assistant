@@ -17,12 +17,12 @@ public class ProcessingJobService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProcessingJobService.class);
 
-    private final DocumentSourceRepository documentSourceRepository;
+    private final InMemoryDocumentSourceRepository documentSourceRepository;
     private final InMemoryProcessingJobRepository processingJobRepository;
     private final AtomicInteger jobSequence = new AtomicInteger();
 
     public ProcessingJobService(
-            DocumentSourceRepository documentSourceRepository,
+            InMemoryDocumentSourceRepository documentSourceRepository,
             InMemoryProcessingJobRepository processingJobRepository
     ) {
         this.documentSourceRepository = documentSourceRepository;
