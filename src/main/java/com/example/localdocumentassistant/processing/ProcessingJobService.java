@@ -2,7 +2,7 @@ package com.example.localdocumentassistant.processing;
 
 import java.time.Instant;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,17 +16,20 @@ import com.example.localdocumentassistant.api.MockApiController.StartProcessingJ
 public class ProcessingJobService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProcessingJobService.class);
+    private static final int MOCK_TOTAL_FILES = 20;
 
     private final DocumentSourceRepository documentSourceRepository;
-    private final InMemoryProcessingJobRepository processingJobRepository;
-    private final AtomicInteger jobSequence = new AtomicInteger();
+    private final ProcessingJobRepository processingJobRepository;
+    private final MockDocumentProcessingService mockDocumentProcessingService;
 
     public ProcessingJobService(
             DocumentSourceRepository documentSourceRepository,
-            InMemoryProcessingJobRepository processingJobRepository
+            ProcessingJobRepository processingJobRepository,
+            MockDocumentProcessingService mockDocumentProcessingService
     ) {
         this.documentSourceRepository = documentSourceRepository;
         this.processingJobRepository = processingJobRepository;
+        this.mockDocumentProcessingService = mockDocumentProcessingService;
     }
 
     public StartProcessingJobResponse startProcessingJob(StartProcessingJobRequest request) {
@@ -36,82 +39,52 @@ public class ProcessingJobService {
         LOGGER.info("Registered SQLite document source id={} path={} includeSubfolders={} status={}",
                 source.id(), source.path(), source.includeSubfolders(), source.status());
 
-        String jobId = "mock-job-%03d".formatted(jobSequence.incrementAndGet());
-        processingJobRepository.save(new MockProcessingJob(jobId, Instant.now()));
+        String jobId = "job-" + UUID.randomUUID();
+        ProcessingJob job = processingJobRepository.create(new ProcessingJob(
+                null,
+                jobId,
+                source.id(),
+                "PENDING",
+                MOCK_TOTAL_FILES,
+                0,
+                0,
+                0,
+                0,
+                null,
+                "Waiting to start mocked processing",
+                0,
+                0,
+                Instant.now().toString(),
+                null
+        ));
+        mockDocumentProcessingService.startMockProcessing(job.jobId());
 
         return new StartProcessingJobResponse(
-                jobId,
-                "QUEUED",
+                job.jobId(),
+                job.status(),
                 "Mock processing job started. No files are being scanned yet.",
-                "/api/processing-jobs/" + jobId
+                "/api/processing-jobs/" + job.jobId()
         );
     }
 
     public Optional<ProcessingJobResponse> pollProcessingJobStatus(String jobId) {
-        return processingJobRepository.findById(jobId)
-                .map(MockProcessingJob::advanceAndSnapshot);
+        return processingJobRepository.findByJobId(jobId)
+                .map(this::toResponse);
     }
 
-    static class MockProcessingJob {
-        private static final int TOTAL_FILES = 20;
-
-        private final String id;
-        private final Instant startedAt;
-        private int processedFiles;
-
-        MockProcessingJob(String id, Instant startedAt) {
-            this.id = id;
-            this.startedAt = startedAt;
-        }
-
-        String id() {
-            return id;
-        }
-
-        synchronized ProcessingJobResponse advanceAndSnapshot() {
-            processedFiles = Math.min(processedFiles + 5, TOTAL_FILES);
-
-            int failedFiles = processedFiles == TOTAL_FILES ? 1 : 0;
-            int skippedFiles = processedFiles == TOTAL_FILES ? 1 : 0;
-            int successfulFiles = Math.max(processedFiles - failedFiles - skippedFiles, 0);
-
-            return new ProcessingJobResponse(
-                    id,
-                    "Indexing mocked documents",
-                    status(),
-                    processedFiles * 100 / TOTAL_FILES,
-                    processedFiles,
-                    TOTAL_FILES,
-                    successfulFiles,
-                    failedFiles,
-                    skippedFiles,
-                    currentStep(),
-                    startedAt
-            );
-        }
-
-        private String status() {
-            if (processedFiles == 0) {
-                return "QUEUED";
-            }
-
-            if (processedFiles == TOTAL_FILES) {
-                return "COMPLETED_WITH_ERRORS";
-            }
-
-            return "RUNNING";
-        }
-
-        private String currentStep() {
-            if (processedFiles == TOTAL_FILES) {
-                return "Mock run completed with one failed file and one skipped file";
-            }
-
-            if (processedFiles <= 5) {
-                return "Preparing mocked file list";
-            }
-
-            return "Updating mocked processing counters";
-        }
+    private ProcessingJobResponse toResponse(ProcessingJob job) {
+        return new ProcessingJobResponse(
+                job.jobId(),
+                "Indexing mocked documents",
+                job.status(),
+                job.processedFiles() * 100 / job.totalFiles(),
+                job.processedFiles(),
+                job.totalFiles(),
+                job.successfulFiles(),
+                job.failedFiles(),
+                job.skippedFiles(),
+                job.currentStep(),
+                Instant.parse(job.startedAt())
+        );
     }
 }
