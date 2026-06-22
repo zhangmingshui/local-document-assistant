@@ -80,6 +80,31 @@ public class SqliteStartupVerifier implements ApplicationRunner {
             CREATE INDEX IF NOT EXISTS idx_documents_content_hash
             ON documents(content_hash)
             """;
+    private static final String PROCESSING_ERRORS_TABLE = """
+            CREATE TABLE IF NOT EXISTS processing_errors (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                processing_job_id INTEGER NOT NULL,
+                document_id INTEGER,
+                file_path TEXT,
+                error_type TEXT,
+                error_message TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (processing_job_id) REFERENCES processing_jobs(id),
+                FOREIGN KEY (document_id) REFERENCES documents(id)
+            )
+            """;
+    private static final String PROCESSING_ERRORS_JOB_INDEX = """
+            CREATE INDEX IF NOT EXISTS idx_processing_errors_processing_job_id
+            ON processing_errors(processing_job_id)
+            """;
+    private static final String PROCESSING_ERRORS_DOCUMENT_INDEX = """
+            CREATE INDEX IF NOT EXISTS idx_processing_errors_document_id
+            ON processing_errors(document_id)
+            """;
+    private static final String PROCESSING_ERRORS_CREATED_AT_INDEX = """
+            CREATE INDEX IF NOT EXISTS idx_processing_errors_created_at
+            ON processing_errors(created_at)
+            """;
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -100,10 +125,15 @@ public class SqliteStartupVerifier implements ApplicationRunner {
         jdbcTemplate.execute(DOCUMENTS_WATCHED_FOLDER_INDEX);
         jdbcTemplate.execute(DOCUMENTS_DOCUMENT_UUID_INDEX);
         jdbcTemplate.execute(DOCUMENTS_CONTENT_HASH_INDEX);
+        jdbcTemplate.execute(PROCESSING_ERRORS_TABLE);
+        jdbcTemplate.execute(PROCESSING_ERRORS_JOB_INDEX);
+        jdbcTemplate.execute(PROCESSING_ERRORS_DOCUMENT_INDEX);
+        jdbcTemplate.execute(PROCESSING_ERRORS_CREATED_AT_INDEX);
 
         verifyTableExists("watched_folders");
         verifyTableExists("processing_jobs");
         verifyTableExists("documents");
+        verifyTableExists("processing_errors");
     }
 
     private void verifyTableExists(String tableName) {
