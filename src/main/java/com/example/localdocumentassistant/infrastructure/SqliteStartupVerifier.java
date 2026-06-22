@@ -26,6 +26,28 @@ public class SqliteStartupVerifier implements ApplicationRunner {
                 updated_at TEXT NOT NULL
             )
             """;
+    private static final String PROCESSING_JOBS_TABLE = """
+            CREATE TABLE IF NOT EXISTS processing_jobs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                job_id TEXT NOT NULL UNIQUE,
+                watched_folder_id INTEGER NOT NULL,
+                status TEXT NOT NULL,
+                total_files INTEGER NOT NULL DEFAULT 0,
+                processed_files INTEGER NOT NULL DEFAULT 0,
+                successful_files INTEGER NOT NULL DEFAULT 0,
+                failed_files INTEGER NOT NULL DEFAULT 0,
+                skipped_files INTEGER NOT NULL DEFAULT 0,
+                current_file TEXT,
+                current_step TEXT,
+                current_chunk INTEGER NOT NULL DEFAULT 0,
+                total_chunks_for_current_file INTEGER NOT NULL DEFAULT 0,
+                started_at TEXT,
+                completed_at TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (watched_folder_id) REFERENCES watched_folders(id)
+            )
+            """;
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -41,16 +63,22 @@ public class SqliteStartupVerifier implements ApplicationRunner {
         LOGGER.info("Connected to SQLite version {} using ./data/local-document-assistant.sqlite", sqliteVersion);
 
         jdbcTemplate.execute(WATCHED_FOLDERS_TABLE);
+        jdbcTemplate.execute(PROCESSING_JOBS_TABLE);
 
+        verifyTableExists("watched_folders");
+        verifyTableExists("processing_jobs");
+    }
+
+    private void verifyTableExists(String tableName) {
         Integer tableCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'watched_folders'",
-                Integer.class
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?",
+                Integer.class,
+                tableName
         );
-
         if (tableCount == null || tableCount == 0) {
-            throw new IllegalStateException("SQLite table watched_folders was not created.");
+            throw new IllegalStateException("SQLite table " + tableName + " was not created.");
         }
 
-        LOGGER.info("SQLite table watched_folders exists.");
+        LOGGER.info("SQLite table {} exists.", tableName);
     }
 }
