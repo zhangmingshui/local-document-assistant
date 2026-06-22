@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.localdocumentassistant.processing.DocumentSourceService;
+import com.example.localdocumentassistant.processing.DocumentSourceService.DocumentSourceSummary;
 import com.example.localdocumentassistant.processing.ProcessingJobService;
 
 @RestController
@@ -20,19 +22,20 @@ import com.example.localdocumentassistant.processing.ProcessingJobService;
 @CrossOrigin(origins = "http://localhost:5173")
 public class MockApiController {
 
+    private final DocumentSourceService documentSourceService;
     private final ProcessingJobService processingJobService;
 
-    public MockApiController(ProcessingJobService processingJobService) {
+    public MockApiController(
+            DocumentSourceService documentSourceService,
+            ProcessingJobService processingJobService
+    ) {
+        this.documentSourceService = documentSourceService;
         this.processingJobService = processingJobService;
     }
 
     @GetMapping("/folders")
-    public List<FolderResponse> folders() {
-        return List.of(
-                new FolderResponse("folder-1", "/Users/demo/Documents/Mock Research", 42),
-                new FolderResponse("folder-2", "/Users/demo/Documents/Mock Invoices", 18),
-                new FolderResponse("folder-3", "/Users/demo/Desktop/Mock Notes", 9)
-        );
+    public List<DocumentSourceSummary> folders() {
+        return documentSourceService.getConfiguredSources();
     }
 
     @GetMapping("/processing-jobs/latest")
@@ -97,9 +100,6 @@ public class MockApiController {
         );
 
         return ResponseEntity.ok(response);
-    }
-
-    public record FolderResponse(String id, String path, int documentCount) {
     }
 
     public record ProcessingJobResponse(

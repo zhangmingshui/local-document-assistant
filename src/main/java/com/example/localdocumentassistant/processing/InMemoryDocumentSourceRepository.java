@@ -1,5 +1,7 @@
 package com.example.localdocumentassistant.processing;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,5 +21,10 @@ public class InMemoryDocumentSourceRepository implements DocumentSourceRepositor
     @Override
     public Optional<DocumentSource> findByPath(String path) {
         return Optional.ofNullable(sourcesByPath.get(path));
+    }
+
+    @Override
+    public List<DocumentSource> findAll() {
+        return new ArrayList<>(sourcesByPath.values());
     }
 }

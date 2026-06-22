@@ -46,7 +46,7 @@ const processingSummary = computed(() => {
   };
 });
 
-async function loadDashboard() {
+async function loadFolders() {
   error.value = '';
 
   try {
@@ -67,6 +67,7 @@ async function useMockSourceFolder(payload) {
 
   try {
     sourceJob.value = await startProcessingJob(payload);
+    await loadFolders();
   } catch (requestError) {
     sourceError.value = requestError.message;
   } finally {
@@ -134,7 +135,7 @@ async function askQuestion(question) {
   }
 }
 
-onMounted(loadDashboard);
+onMounted(loadFolders);
 onUnmounted(stopPollingStatus);
 </script>
 
