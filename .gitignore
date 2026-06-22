@@ -1,6 +1,7 @@
 # Java / Maven
 target/
 *.class
+data/
 
 # IntelliJ
 .idea/
