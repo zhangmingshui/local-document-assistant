@@ -27,10 +27,26 @@ const isAsking = ref(false);
 const questionError = ref('');
 const error = ref('');
 
+const TERMINAL_PROCESSING_STATUSES = [
+  'COMPLETED',
+  'COMPLETED_WITH_ERRORS',
+  'FAILED',
+  'CANCELLED'
+];
+
 const displayedProcessingJob = computed(() => processingStatusResponse.value);
 const statusBadgeLabel = computed(() => displayedProcessingJob.value?.status ?? sourceJob.value?.status);
+const isProcessingTerminal = computed(() => (
+  TERMINAL_PROCESSING_STATUSES.includes(displayedProcessingJob.value?.status)
+));
 const isProcessingComplete = computed(() => (
-  displayedProcessingJob.value?.status?.startsWith('COMPLETED') ?? false
+  ['COMPLETED', 'COMPLETED_WITH_ERRORS'].includes(displayedProcessingJob.value?.status)
+));
+const isProcessingFailed = computed(() => displayedProcessingJob.value?.status === 'FAILED');
+const processingFailureMessage = computed(() => (
+  isProcessingFailed.value
+    ? displayedProcessingJob.value?.currentStep || 'Processing failed. Check the selected folder and try again.'
+    : ''
 ));
 
 const processingSummary = computed(() => {
@@ -67,6 +83,7 @@ async function useMockSourceFolder(payload) {
 
   try {
     sourceJob.value = await startProcessingJob(payload);
+    startPollingStatus();
     await loadFolders();
   } catch (requestError) {
     sourceError.value = requestError.message;
@@ -76,7 +93,9 @@ async function useMockSourceFolder(payload) {
 }
 
 async function refreshProcessingStatus() {
-  if (!sourceJob.value?.pollUrl) {
+  const jobToRefresh = sourceJob.value;
+
+  if (!jobToRefresh?.pollUrl) {
     refreshError.value = 'Start a mock processing job before refreshing status.';
     return;
   }
@@ -89,10 +108,15 @@ async function refreshProcessingStatus() {
   isRefreshingStatus.value = true;
 
   try {
-    processingStatusResponse.value = await getProcessingJobStatus(sourceJob.value);
+    const latestStatus = await getProcessingJobStatus(jobToRefresh);
+    if (sourceJob.value?.jobId !== jobToRefresh.jobId) {
+      return;
+    }
+
+    processingStatusResponse.value = latestStatus;
     lastRefreshedAt.value = new Date().toLocaleTimeString();
 
-    if (processingStatusResponse.value.status?.startsWith('COMPLETED')) {
+    if (TERMINAL_PROCESSING_STATUSES.includes(processingStatusResponse.value.status)) {
       stopPollingStatus();
     }
   } catch (requestError) {
@@ -104,7 +128,7 @@ async function refreshProcessingStatus() {
 }
 
 function startPollingStatus() {
-  if (!sourceJob.value?.pollUrl || pollingTimerId.value || isProcessingComplete.value) {
+  if (!sourceJob.value?.pollUrl || pollingTimerId.value || isProcessingTerminal.value) {
     return;
   }
 
@@ -167,12 +191,13 @@ onUnmounted(stopPollingStatus);
       :summary="processingSummary"
       :status-badge-label="statusBadgeLabel"
       :is-complete="isProcessingComplete"
+      :is-failed="isProcessingFailed"
       :is-refreshing="isRefreshingStatus"
       :is-polling="isPollingStatus"
       :last-refreshed-at="lastRefreshedAt"
       :error="refreshError"
+      :failure-message="processingFailureMessage"
       @refresh="refreshProcessingStatus"
-      @start-polling="startPollingStatus"
       @stop-polling="stopPollingStatus"
     />
 

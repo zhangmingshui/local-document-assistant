@@ -57,7 +57,7 @@ public class ProcessingJobService {
                 Instant.now().toString(),
                 null
         ));
-        mockDocumentProcessingService.startMockProcessing(job.jobId());
+        mockDocumentProcessingService.startMockProcessing(job.jobId(), source);
 
         return new StartProcessingJobResponse(
                 job.jobId(),

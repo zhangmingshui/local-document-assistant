@@ -23,6 +23,10 @@ defineProps({
     type: Boolean,
     default: false
   },
+  isFailed: {
+    type: Boolean,
+    default: false
+  },
   isRefreshing: {
     type: Boolean,
     default: false
@@ -38,10 +42,14 @@ defineProps({
   error: {
     type: String,
     default: ''
+  },
+  failureMessage: {
+    type: String,
+    default: ''
   }
 });
 
-const emit = defineEmits(['refresh', 'start-polling', 'stop-polling']);
+const emit = defineEmits(['refresh', 'stop-polling']);
 </script>
 
 <template>
@@ -50,7 +58,7 @@ const emit = defineEmits(['refresh', 'start-polling', 'stop-polling']);
       <div>
         <p class="eyebrow">Step 2</p>
         <h2>Process documents</h2>
-        <p>Refresh once, or start polling every 3 seconds, to watch the in-memory mock job advance.</p>
+        <p>Status refreshes automatically every 3 seconds after a mock job starts.</p>
       </div>
       <StatusBadge :label="statusBadgeLabel" :complete="isComplete" />
     </div>
@@ -69,12 +77,12 @@ const emit = defineEmits(['refresh', 'start-polling', 'stop-polling']);
           {{ isRefreshing ? 'Refreshing...' : 'Refresh status' }}
         </button>
         <button
+          v-if="isPolling"
           type="button"
-          :disabled="!sourceJob || isComplete"
           class="secondary-action"
-          @click="isPolling ? emit('stop-polling') : emit('start-polling')"
+          @click="emit('stop-polling')"
         >
-          {{ isPolling ? 'Stop polling' : 'Start polling' }}
+          Stop polling
         </button>
       </div>
     </div>
@@ -84,43 +92,44 @@ const emit = defineEmits(['refresh', 'start-polling', 'stop-polling']);
     </p>
 
     <p v-if="error" class="source-error">{{ error }}</p>
+    <p v-if="isFailed && failureMessage" class="processing-error">
+      {{ failureMessage }}
+    </p>
 
     <div v-if="!sourceJob" class="empty-state">
       Configure a source in Step 1 to create a mock processing job before refreshing status.
     </div>
 
     <div v-else-if="!displayedJob" class="empty-state">
-      Mock job created. Click Refresh status or Start polling to load the first status response.
+      Mock job created. Status will load automatically; you can also refresh once manually.
     </div>
 
     <template v-if="displayedJob && summary">
-      <div class="job-summary">
-        <div>
-          <span class="label">Latest response ID</span>
-          <strong>{{ displayedJob.id }}</strong>
-        </div>
-        <div>
-          <span class="label">Job</span>
-          <strong>{{ displayedJob.name }}</strong>
-        </div>
+      <div v-if="!isFailed" class="job-summary">
         <div>
           <span class="label">Current step</span>
           <strong>{{ summary.currentStep }}</strong>
         </div>
       </div>
 
-      <div class="progress-header">
-        <span>{{ displayedJob.progressPercent }}% complete</span>
-        <strong>{{ displayedJob.processedFiles }} / {{ displayedJob.totalFiles }} files</strong>
-      </div>
+      <template v-if="!isFailed">
+        <div class="progress-header">
+          <span>{{ displayedJob.progressPercent }}% complete</span>
+          <strong>{{ displayedJob.processedFiles }} / {{ displayedJob.totalFiles }} files</strong>
+        </div>
 
-      <ProgressBar :value="displayedJob.progressPercent" />
+        <ProgressBar :value="displayedJob.progressPercent" />
+      </template>
+
+      <p v-else class="empty-state">
+        No files were processed.
+      </p>
 
       <p v-if="isComplete" class="completed-message">
         Mock processing completed. Polling has stopped; you can still refresh manually.
       </p>
 
-      <div class="status-grid">
+      <div v-if="!isFailed" class="status-grid">
         <div>
           <span class="label">Successful</span>
           <strong>{{ summary.successful }}</strong>

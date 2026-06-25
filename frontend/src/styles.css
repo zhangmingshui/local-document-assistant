@@ -190,36 +190,6 @@ textarea {
   font-size: 0.94rem;
 }
 
-.source-job-result {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 4px;
-  padding: 12px;
-  border: 1px solid #d8e7df;
-  border-radius: 6px;
-  background: #f2faf6;
-}
-
-.source-job-result div {
-  display: grid;
-  gap: 3px;
-}
-
-.source-job-result p {
-  grid-column: 1 / -1;
-  margin: 0;
-  color: #2f5d4f;
-  line-height: 1.45;
-}
-
-.source-job-result > span {
-  grid-column: 1 / -1;
-  color: #68747c;
-  font-size: 0.94rem;
-  overflow-wrap: anywhere;
-}
-
 .folder-list {
   display: grid;
   gap: 10px;
@@ -343,9 +313,19 @@ textarea {
   color: #28624f;
 }
 
+.processing-error {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid #f2c7b7;
+  border-radius: 6px;
+  background: #fff3ef;
+  color: #8a2c14;
+  line-height: 1.45;
+}
+
 .job-summary {
   display: grid;
-  grid-template-columns: 0.7fr 0.8fr 1.2fr;
+  grid-template-columns: 1fr;
   gap: 12px;
   margin-bottom: 18px;
 }
@@ -503,7 +483,6 @@ textarea {
   .job-summary,
   .refresh-panel,
   .source-path-row,
-  .source-job-result,
   .status-grid,
   .source-grid {
     grid-template-columns: 1fr;

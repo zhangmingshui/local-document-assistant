@@ -22,7 +22,7 @@ defineProps({
 
 const emit = defineEmits(['start-processing', 'clear-error']);
 
-const sourcePath = ref('/Users/example/Documents/LocalDocs');
+const sourcePath = ref('/Users/ste/Downloads/analytics');
 const includeSubfolders = ref(true);
 
 function submitSource() {
@@ -63,18 +63,9 @@ function submitSource() {
         <span>Include subfolders</span>
       </label>
 
-      <article v-if="sourceJob" class="source-job-result">
-        <div>
-          <span class="label">Job ID</span>
-          <strong>{{ sourceJob.jobId }}</strong>
-        </div>
-        <div>
-          <span class="label">Status</span>
-          <strong>{{ sourceJob.status }}</strong>
-        </div>
-        <p>{{ sourceJob.message }}</p>
-        <span>Ready for Step 2: {{ sourceJob.pollUrl }}</span>
-      </article>
+      <p v-if="sourceJob" class="confirmation-message">
+        Processing started. See Step 2 for progress.
+      </p>
     </form>
 
     <div class="folder-list">
@@ -82,7 +73,7 @@ function submitSource() {
         <span class="folder-icon" aria-hidden="true"></span>
         <div class="folder-copy">
           <strong>{{ folder.path }}</strong>
-          <span>{{ folder.documentCount }} mocked documents</span>
+          <span>{{ folder.documentCount }} documents</span>
         </div>
         <span class="folder-state">Selected</span>
       </article>
