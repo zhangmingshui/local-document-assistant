@@ -22,7 +22,7 @@ defineProps({
 
 const emit = defineEmits(['start-processing', 'clear-error']);
 
-const sourcePath = ref('/Users/ste/Downloads/analytics');
+const sourcePath = ref('/Users/ste/tempDocs');
 const includeSubfolders = ref(true);
 
 function submitSource() {

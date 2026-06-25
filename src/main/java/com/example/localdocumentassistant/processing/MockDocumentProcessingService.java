@@ -7,6 +7,7 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
@@ -26,9 +27,14 @@ public class MockDocumentProcessingService {
 
     private final ExecutorService executorService = Executors.newCachedThreadPool();
     private final ProcessingJobRepository processingJobRepository;
+    private final DocumentRepository documentRepository;
 
-    public MockDocumentProcessingService(ProcessingJobRepository processingJobRepository) {
+    public MockDocumentProcessingService(
+            ProcessingJobRepository processingJobRepository,
+            DocumentRepository documentRepository
+    ) {
         this.processingJobRepository = processingJobRepository;
+        this.documentRepository = documentRepository;
     }
 
     public void startMockProcessing(String jobId, DocumentSource source) {
@@ -41,11 +47,27 @@ public class MockDocumentProcessingService {
     }
 
     private void runMockProcessing(String jobId, DocumentSource source) {
-        if (!scanConfiguredFolder(jobId, source)) {
+        List<DiscoveredDocumentMetadata> discoveredDocuments = scanConfiguredFolder(jobId, source);
+        if (discoveredDocuments == null) {
             return;
         }
 
-        int[] checkpoints = {5, 10, 15, 20};
+        persistDiscoveredDocuments(source, discoveredDocuments);
+        ProcessingJob discoveredJob = updateTotalFiles(jobId, discoveredDocuments.size());
+        if (discoveredJob == null) {
+            return;
+        }
+
+        if (discoveredDocuments.isEmpty()) {
+            processingJobRepository.update(completedJobState(
+                    discoveredJob,
+                    0,
+                    "Mock run completed. No supported .doc/.txt files were discovered."
+            ));
+            return;
+        }
+
+        int[] checkpoints = progressCheckpoints(discoveredDocuments.size());
 
         for (int processedFiles : checkpoints) {
             if (!sleepBetweenMockUpdates()) {
@@ -62,28 +84,28 @@ public class MockDocumentProcessingService {
         }
     }
 
-    private boolean scanConfiguredFolder(String jobId, DocumentSource source) {
+    private List<DiscoveredDocumentMetadata> scanConfiguredFolder(String jobId, DocumentSource source) {
         Path sourcePath;
         try {
             sourcePath = Path.of(source.path());
         } catch (InvalidPathException invalidPath) {
             failJob(jobId, "Configured document source path is invalid: " + source.path(), invalidPath);
-            return false;
+            return null;
         }
 
         if (!Files.exists(sourcePath, LinkOption.NOFOLLOW_LINKS)) {
             failJob(jobId, "Configured document source path does not exist: " + sourcePath, null);
-            return false;
+            return null;
         }
 
         if (!Files.isDirectory(sourcePath, LinkOption.NOFOLLOW_LINKS)) {
             failJob(jobId, "Configured document source path is not a directory: " + sourcePath, null);
-            return false;
+            return null;
         }
 
         if (!Files.isReadable(sourcePath)) {
             failJob(jobId, "Configured document source directory cannot be read: " + sourcePath, null);
-            return false;
+            return null;
         }
 
         int maxDepth = source.includeSubfolders() ? Integer.MAX_VALUE : 1;
@@ -91,17 +113,17 @@ public class MockDocumentProcessingService {
                 sourcePath, source.includeSubfolders());
 
         try (Stream<Path> paths = Files.walk(sourcePath, maxDepth)) {
-            long discoveredFiles = paths
+            List<DiscoveredDocumentMetadata> discoveredDocuments = paths
                     .filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
                     .filter(this::isSupportedDocumentFile)
-                    .peek(this::logDiscoveredFileMetadata)
-                    .count();
+                    .map(this::readDiscoveredFileMetadata)
+                    .toList();
 
-            LOGGER.info("Discovered {} supported .doc/.txt file(s) under {}", discoveredFiles, sourcePath);
-            return true;
+            LOGGER.info("Discovered {} supported .doc/.txt file(s) under {}", discoveredDocuments.size(), sourcePath);
+            return discoveredDocuments;
         } catch (IOException | UncheckedIOException | SecurityException scanError) {
             failJob(jobId, "Configured document source directory could not be scanned: " + sourcePath, scanError);
-            return false;
+            return null;
         }
     }
 
@@ -110,20 +132,124 @@ public class MockDocumentProcessingService {
         return fileName.endsWith(".doc") || fileName.endsWith(".txt");
     }
 
-    private void logDiscoveredFileMetadata(Path file) {
+    private DiscoveredDocumentMetadata readDiscoveredFileMetadata(Path file) {
         try {
             String fileName = file.getFileName().toString();
+            String fileType = extensionFor(fileName);
+            long fileSize = Files.size(file);
+            String lastModifiedAt = Files.getLastModifiedTime(file).toInstant().toString();
             LOGGER.info(
                     "Discovered document file path={} fileName={} fileType={} fileSize={} lastModifiedAt={}",
                     file.toAbsolutePath(),
                     fileName,
-                    extensionFor(fileName),
-                    Files.size(file),
-                    Files.getLastModifiedTime(file).toInstant()
+                    fileType,
+                    fileSize,
+                    lastModifiedAt
+            );
+
+            return new DiscoveredDocumentMetadata(
+                    file.toAbsolutePath().toString(),
+                    fileName,
+                    fileType,
+                    fileSize,
+                    lastModifiedAt
             );
         } catch (IOException metadataError) {
             throw new UncheckedIOException("Could not read metadata for discovered file: " + file, metadataError);
         }
+    }
+
+    private void persistDiscoveredDocuments(
+            DocumentSource source,
+            List<DiscoveredDocumentMetadata> discoveredDocuments
+    ) {
+        for (DiscoveredDocumentMetadata discoveredDocument : discoveredDocuments) {
+            Document document = documentRepository
+                    .findByWatchedFolderIdAndFilePath(source.id(), discoveredDocument.filePath())
+                    .map(existingDocument -> documentFromExisting(existingDocument, discoveredDocument))
+                    .orElseGet(() -> newDocument(source, discoveredDocument));
+
+            Document savedDocument = document.id() == null
+                    ? documentRepository.create(document)
+                    : documentRepository.update(document);
+            LOGGER.info("Saved discovered document metadata id={} uuid={} path={}",
+                    savedDocument.id(), savedDocument.documentUuid(), savedDocument.filePath());
+        }
+    }
+
+    private Document newDocument(DocumentSource source, DiscoveredDocumentMetadata discoveredDocument) {
+        return new Document(
+                null,
+                null,
+                source.id(),
+                discoveredDocument.filePath(),
+                discoveredDocument.fileName(),
+                discoveredDocument.fileType(),
+                discoveredDocument.fileSize(),
+                discoveredDocument.lastModifiedAt(),
+                null,
+                DocumentProcessingStatus.DISCOVERED,
+                0,
+                null
+        );
+    }
+
+    private Document documentFromExisting(
+            Document existingDocument,
+            DiscoveredDocumentMetadata discoveredDocument
+    ) {
+        return new Document(
+                existingDocument.id(),
+                existingDocument.documentUuid(),
+                existingDocument.watchedFolderId(),
+                discoveredDocument.filePath(),
+                discoveredDocument.fileName(),
+                discoveredDocument.fileType(),
+                discoveredDocument.fileSize(),
+                discoveredDocument.lastModifiedAt(),
+                existingDocument.contentHash(),
+                DocumentProcessingStatus.DISCOVERED,
+                0,
+                null
+        );
+    }
+
+    private ProcessingJob updateTotalFiles(String jobId, int totalFiles) {
+        ProcessingJob currentJob = processingJobRepository.findByJobId(jobId).orElse(null);
+        if (currentJob == null) {
+            LOGGER.warn("Could not update total files because job {} was not found.", jobId);
+            return null;
+        }
+
+        return processingJobRepository.update(new ProcessingJob(
+                currentJob.id(),
+                currentJob.jobId(),
+                currentJob.watchedFolderId(),
+                ProcessingJobStatus.RUNNING,
+                totalFiles,
+                0,
+                0,
+                0,
+                0,
+                currentJob.currentFile(),
+                "Discovered " + totalFiles + " supported .doc/.txt file(s)",
+                currentJob.currentChunk(),
+                currentJob.totalChunksForCurrentFile(),
+                currentJob.startedAt(),
+                null
+        ));
+    }
+
+    private int[] progressCheckpoints(int totalFiles) {
+        return Stream.of(
+                        Math.max(1, totalFiles / 4),
+                        Math.max(1, totalFiles / 2),
+                        Math.max(1, totalFiles * 3 / 4),
+                        totalFiles
+                )
+                .mapToInt(Integer::intValue)
+                .distinct()
+                .toArray();
     }
 
     private String extensionFor(String fileName) {
@@ -169,15 +295,15 @@ public class MockDocumentProcessingService {
 
     private ProcessingJob nextMockState(ProcessingJob currentJob, int processedFiles) {
         boolean complete = processedFiles >= currentJob.totalFiles();
-        int failedFiles = complete ? 1 : 0;
-        int skippedFiles = complete ? 1 : 0;
+        int failedFiles = complete && currentJob.totalFiles() >= 2 ? 1 : 0;
+        int skippedFiles = complete && currentJob.totalFiles() >= 3 ? 1 : 0;
         int successfulFiles = Math.max(processedFiles - failedFiles - skippedFiles, 0);
 
         return new ProcessingJob(
                 currentJob.id(),
                 currentJob.jobId(),
                 currentJob.watchedFolderId(),
-                complete ? ProcessingJobStatus.COMPLETED_WITH_ERRORS : ProcessingJobStatus.RUNNING,
+                statusForMockProgress(complete, failedFiles, skippedFiles),
                 currentJob.totalFiles(),
                 processedFiles,
                 successfulFiles,
@@ -192,9 +318,47 @@ public class MockDocumentProcessingService {
         );
     }
 
+    private ProcessingJob completedJobState(ProcessingJob currentJob, int processedFiles, String currentStep) {
+        return new ProcessingJob(
+                currentJob.id(),
+                currentJob.jobId(),
+                currentJob.watchedFolderId(),
+                ProcessingJobStatus.COMPLETED,
+                currentJob.totalFiles(),
+                processedFiles,
+                processedFiles,
+                0,
+                0,
+                currentJob.currentFile(),
+                currentStep,
+                currentJob.currentChunk(),
+                currentJob.totalChunksForCurrentFile(),
+                currentJob.startedAt(),
+                Instant.now().toString()
+        );
+    }
+
+    private ProcessingJobStatus statusForMockProgress(boolean complete, int failedFiles, int skippedFiles) {
+        if (!complete) {
+            return ProcessingJobStatus.RUNNING;
+        }
+
+        return failedFiles > 0 || skippedFiles > 0
+                ? ProcessingJobStatus.COMPLETED_WITH_ERRORS
+                : ProcessingJobStatus.COMPLETED;
+    }
+
     private String currentStepFor(int processedFiles, int totalFiles) {
         if (processedFiles >= totalFiles) {
-            return "Mock run completed with one failed file and one skipped file";
+            if (totalFiles >= 3) {
+                return "Mock run completed with one failed file and one skipped file";
+            }
+
+            if (totalFiles == 2) {
+                return "Mock run completed with one failed file";
+            }
+
+            return "Mock run completed";
         }
 
         if (processedFiles <= 5) {
@@ -212,5 +376,14 @@ public class MockDocumentProcessingService {
             Thread.currentThread().interrupt();
             return false;
         }
+    }
+
+    private record DiscoveredDocumentMetadata(
+            String filePath,
+            String fileName,
+            String fileType,
+            long fileSize,
+            String lastModifiedAt
+    ) {
     }
 }

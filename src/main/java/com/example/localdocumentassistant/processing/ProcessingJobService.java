@@ -75,9 +75,9 @@ public class ProcessingJobService {
     private ProcessingJobResponse toResponse(ProcessingJob job) {
         return new ProcessingJobResponse(
                 job.jobId(),
-                "Indexing mocked documents",
+                "Indexing discovered documents",
                 job.status().name(),
-                job.processedFiles() * 100 / job.totalFiles(),
+                progressPercent(job),
                 job.processedFiles(),
                 job.totalFiles(),
                 job.successfulFiles(),
@@ -86,5 +86,16 @@ public class ProcessingJobService {
                 job.currentStep(),
                 Instant.parse(job.startedAt())
         );
+    }
+
+    private int progressPercent(ProcessingJob job) {
+        if (job.totalFiles() == 0) {
+            return switch (job.status()) {
+                case COMPLETED, COMPLETED_WITH_ERRORS -> 100;
+                default -> 0;
+            };
+        }
+
+        return Math.min(100, job.processedFiles() * 100 / job.totalFiles());
     }
 }
