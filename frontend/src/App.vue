@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { getFolderDocuments } from './api/documentsApi';
 import { askQuestion as askQuestionApi } from './api/questionsApi';
 import {
   getFolders,
@@ -17,6 +18,7 @@ const isStartingSourceJob = ref(false);
 const sourceError = ref('');
 const rescanError = ref('');
 const rescanningFolderId = ref(null);
+const activeFolderId = ref(null);
 
 const processingStatusResponse = ref(null);
 const isRefreshingStatus = ref(false);
@@ -24,6 +26,15 @@ const isPollingStatus = ref(false);
 const pollingTimerId = ref(null);
 const lastRefreshedAt = ref('');
 const refreshError = ref('');
+
+const documents = ref([]);
+const documentsPage = ref(-1);
+const documentsHasMore = ref(false);
+const documentsTotal = ref(0);
+const isLoadingDocuments = ref(false);
+const documentsError = ref('');
+const areDocumentsVisible = ref(false);
+const documentsRequestId = ref(0);
 
 const answer = ref(null);
 const isAsking = ref(false);
@@ -70,6 +81,7 @@ async function loadFolders() {
 
   try {
     folders.value = await getFolders();
+    return folders.value;
   } catch (requestError) {
     error.value = requestError.message;
   }
@@ -79,7 +91,9 @@ async function useMockSourceFolder(payload) {
   sourceError.value = '';
   rescanError.value = '';
   sourceJob.value = null;
+  activeFolderId.value = null;
   processingStatusResponse.value = null;
+  resetDocuments();
   stopPollingStatus();
   lastRefreshedAt.value = '';
   refreshError.value = '';
@@ -88,7 +102,10 @@ async function useMockSourceFolder(payload) {
   try {
     sourceJob.value = await startProcessingJob(payload);
     startPollingStatus();
-    await loadFolders();
+    const configuredFolders = await loadFolders();
+    activeFolderId.value = configuredFolders?.find(
+      (folder) => folder.path === payload.path.trim()
+    )?.id ?? null;
   } catch (requestError) {
     sourceError.value = requestError.message;
   } finally {
@@ -100,7 +117,9 @@ async function processExistingFolder(folderId) {
   sourceError.value = '';
   rescanError.value = '';
   sourceJob.value = null;
+  activeFolderId.value = folderId;
   processingStatusResponse.value = null;
+  resetDocuments();
   stopPollingStatus();
   lastRefreshedAt.value = '';
   refreshError.value = '';
@@ -113,6 +132,53 @@ async function processExistingFolder(folderId) {
     rescanError.value = requestError.message;
   } finally {
     rescanningFolderId.value = null;
+  }
+}
+
+function resetDocuments() {
+  documentsRequestId.value += 1;
+  documents.value = [];
+  documentsPage.value = -1;
+  documentsHasMore.value = false;
+  documentsTotal.value = 0;
+  documentsError.value = '';
+  areDocumentsVisible.value = false;
+  isLoadingDocuments.value = false;
+}
+
+async function loadDocuments() {
+  if (!activeFolderId.value || !isProcessingComplete.value || isLoadingDocuments.value) {
+    return;
+  }
+
+  const nextPage = documentsPage.value + 1;
+  const folderId = activeFolderId.value;
+  const requestId = documentsRequestId.value + 1;
+  documentsRequestId.value = requestId;
+  documentsError.value = '';
+  isLoadingDocuments.value = true;
+
+  try {
+    const response = await getFolderDocuments(folderId, nextPage, 50);
+    if (documentsRequestId.value !== requestId || activeFolderId.value !== folderId) {
+      return;
+    }
+
+    documents.value = nextPage === 0
+      ? response.documents
+      : [...documents.value, ...response.documents];
+    documentsPage.value = response.page;
+    documentsHasMore.value = response.hasMore;
+    documentsTotal.value = response.totalDocuments;
+    areDocumentsVisible.value = true;
+  } catch (requestError) {
+    if (documentsRequestId.value === requestId) {
+      documentsError.value = requestError.message;
+    }
+  } finally {
+    if (documentsRequestId.value === requestId) {
+      isLoadingDocuments.value = false;
+    }
   }
 }
 
@@ -225,8 +291,17 @@ onUnmounted(stopPollingStatus);
       :last-refreshed-at="lastRefreshedAt"
       :error="refreshError"
       :failure-message="processingFailureMessage"
+      :active-folder-id="activeFolderId"
+      :documents="documents"
+      :documents-total="documentsTotal"
+      :documents-has-more="documentsHasMore"
+      :documents-visible="areDocumentsVisible"
+      :is-loading-documents="isLoadingDocuments"
+      :documents-error="documentsError"
       @refresh="refreshProcessingStatus"
       @stop-polling="stopPollingStatus"
+      @view-documents="loadDocuments"
+      @load-more-documents="loadDocuments"
     />
 
     <AskAnswer

@@ -11,8 +11,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.localdocumentassistant.processing.DocumentService;
 import com.example.localdocumentassistant.processing.DocumentSourceService;
 import com.example.localdocumentassistant.processing.DocumentSourceService.DocumentSourceSummary;
 import com.example.localdocumentassistant.processing.DuplicateDocumentSourceException;
@@ -25,19 +27,39 @@ import com.example.localdocumentassistant.processing.ProcessingJobStatus;
 public class MockApiController {
 
     private final DocumentSourceService documentSourceService;
+    private final DocumentService documentService;
     private final ProcessingJobService processingJobService;
 
     public MockApiController(
             DocumentSourceService documentSourceService,
+            DocumentService documentService,
             ProcessingJobService processingJobService
     ) {
         this.documentSourceService = documentSourceService;
+        this.documentService = documentService;
         this.processingJobService = processingJobService;
     }
 
     @GetMapping("/folders")
     public List<DocumentSourceSummary> folders() {
         return documentSourceService.getConfiguredSources();
+    }
+
+    @GetMapping("/folders/{folderId}/documents")
+    public ResponseEntity<?> documents(
+            @PathVariable Long folderId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int pageSize
+    ) {
+        if (page < 0 || pageSize < 1 || pageSize > 100) {
+            return ResponseEntity.badRequest()
+                    .body(new ErrorResponse("Page must be zero or greater and pageSize must be between 1 and 100."));
+        }
+
+        return documentService.getDocuments(folderId, page, pageSize)
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ErrorResponse("No configured folder found for id: " + folderId)));
     }
 
     @GetMapping("/processing-jobs/latest")

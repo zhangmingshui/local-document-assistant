@@ -100,6 +100,27 @@ public class JdbcDocumentRepository implements DocumentRepository {
     }
 
     @Override
+    public List<Document> findByWatchedFolderId(Long watchedFolderId, int limit, int offset) {
+        return jdbcTemplate.query(
+                selectDocumentsSql() + " WHERE watched_folder_id = ? ORDER BY file_path LIMIT ? OFFSET ?",
+                this::mapDocument,
+                watchedFolderId,
+                limit,
+                offset
+        );
+    }
+
+    @Override
+    public long countByWatchedFolderId(Long watchedFolderId) {
+        Long count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM documents WHERE watched_folder_id = ?",
+                Long.class,
+                watchedFolderId
+        );
+        return count == null ? 0 : count;
+    }
+
+    @Override
     public Optional<Document> findByWatchedFolderIdAndFilePath(Long watchedFolderId, String filePath) {
         List<Document> documents = jdbcTemplate.query(
                 selectDocumentsSql() + " WHERE watched_folder_id = ? AND file_path = ?",

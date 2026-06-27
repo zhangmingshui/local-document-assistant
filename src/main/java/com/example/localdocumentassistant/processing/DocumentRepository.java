@@ -11,6 +11,10 @@ public interface DocumentRepository {
 
     List<Document> findByWatchedFolderId(Long watchedFolderId);
 
+    List<Document> findByWatchedFolderId(Long watchedFolderId, int limit, int offset);
+
+    long countByWatchedFolderId(Long watchedFolderId);
+
     Optional<Document> findByWatchedFolderIdAndFilePath(Long watchedFolderId, String filePath);
 
     Document update(Document document);

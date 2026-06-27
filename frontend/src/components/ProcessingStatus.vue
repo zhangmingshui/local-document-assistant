@@ -46,10 +46,59 @@ defineProps({
   failureMessage: {
     type: String,
     default: ''
+  },
+  activeFolderId: {
+    type: Number,
+    default: null
+  },
+  documents: {
+    type: Array,
+    default: () => []
+  },
+  documentsTotal: {
+    type: Number,
+    default: 0
+  },
+  documentsHasMore: {
+    type: Boolean,
+    default: false
+  },
+  documentsVisible: {
+    type: Boolean,
+    default: false
+  },
+  isLoadingDocuments: {
+    type: Boolean,
+    default: false
+  },
+  documentsError: {
+    type: String,
+    default: ''
   }
 });
 
-const emit = defineEmits(['refresh', 'stop-polling']);
+const emit = defineEmits([
+  'refresh',
+  'stop-polling',
+  'view-documents',
+  'load-more-documents'
+]);
+
+function formatFileSize(bytes) {
+  if (bytes === null || bytes === undefined) {
+    return 'Unknown';
+  }
+
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 </script>
 
 <template>
@@ -142,6 +191,77 @@ const emit = defineEmits(['refresh', 'stop-polling']);
           <span class="label">Skipped</span>
           <strong>{{ summary.skipped }}</strong>
         </div>
+      </div>
+
+      <div class="documents-panel">
+        <p
+          v-if="['PENDING', 'RUNNING', 'SCANNING'].includes(displayedJob.status)"
+          class="helper-message"
+        >
+          Documents will be available when processing completes.
+        </p>
+
+        <template v-else>
+          <p v-if="displayedJob.status === 'COMPLETED_WITH_ERRORS'" class="documents-warning">
+            Processing completed with errors. The successfully discovered documents are still available.
+          </p>
+
+          <button
+            v-if="!documentsVisible"
+            type="button"
+            class="documents-action"
+            :disabled="!activeFolderId || isLoadingDocuments"
+            @click="emit('view-documents')"
+          >
+            {{ isLoadingDocuments ? 'Loading...' : 'View documents' }}
+          </button>
+
+          <p v-if="documentsError" class="source-error">{{ documentsError }}</p>
+
+          <template v-if="documentsVisible">
+            <div class="documents-heading">
+              <h3>Discovered documents</h3>
+              <span>{{ documentsTotal }} total</span>
+            </div>
+
+            <div class="documents-table-wrap">
+              <table class="documents-table">
+                <thead>
+                  <tr>
+                    <th>File name</th>
+                    <th>Type</th>
+                    <th>Size</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="document in documents" :key="document.id">
+                    <td>
+                      <strong>{{ document.fileName }}</strong>
+                      <span>{{ document.filePath }}</span>
+                    </td>
+                    <td>{{ document.fileType || 'Unknown' }}</td>
+                    <td>{{ formatFileSize(document.fileSize) }}</td>
+                    <td>{{ document.processingStatus }}</td>
+                  </tr>
+                  <tr v-if="documents.length === 0">
+                    <td colspan="4">No .doc or .txt documents were discovered.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <button
+              v-if="documentsHasMore"
+              type="button"
+              class="documents-action"
+              :disabled="isLoadingDocuments"
+              @click="emit('load-more-documents')"
+            >
+              {{ isLoadingDocuments ? 'Loading...' : 'Load more' }}
+            </button>
+          </template>
+        </template>
       </div>
     </template>
   </section>
