@@ -17,10 +17,23 @@ defineProps({
   error: {
     type: String,
     default: ''
+  },
+  rescanError: {
+    type: String,
+    default: ''
+  },
+  rescanningFolderId: {
+    type: Number,
+    default: null
   }
 });
 
-const emit = defineEmits(['start-processing', 'clear-error']);
+const emit = defineEmits([
+  'start-processing',
+  'process-existing-folder',
+  'clear-error',
+  'clear-rescan-error'
+]);
 
 const sourcePath = ref('/Users/ste/tempDocs');
 const includeSubfolders = ref(true);
@@ -30,6 +43,11 @@ function submitSource() {
     path: sourcePath.value,
     includeSubfolders: includeSubfolders.value
   });
+}
+
+function processExistingFolder(folderId) {
+  emit('clear-rescan-error');
+  emit('process-existing-folder', folderId);
 }
 </script>
 
@@ -76,7 +94,19 @@ function submitSource() {
           <span>{{ folder.documentCount }} documents</span>
         </div>
         <span class="folder-state">Selected</span>
+        <button
+          type="button"
+          class="folder-action"
+          :disabled="rescanningFolderId === folder.id"
+          @click="processExistingFolder(folder.id)"
+        >
+          {{ rescanningFolderId === folder.id ? 'Starting...' : 'Process again' }}
+        </button>
       </article>
     </div>
+
+    <p v-if="rescanError" class="source-error folder-action-error">
+      {{ rescanError }}
+    </p>
   </section>
 </template>

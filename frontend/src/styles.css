@@ -146,6 +146,7 @@ textarea {
 }
 
 .source-path-row button,
+.folder-action,
 .refresh-actions button,
 .chat-panel button {
   min-height: 42px;
@@ -159,6 +160,7 @@ textarea {
 }
 
 .source-path-row button:disabled,
+.folder-action:disabled,
 .refresh-actions button:disabled,
 .chat-panel button:disabled {
   cursor: not-allowed;
@@ -197,7 +199,7 @@ textarea {
 
 .folder-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 12px;
   padding: 14px;
@@ -236,6 +238,23 @@ textarea {
 .folder-state {
   background: #e9f4ef;
   color: #28624f;
+}
+
+.folder-action {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #c8d0d4;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #23313b;
+  font-size: 0.9rem;
+  font-weight: 750;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.folder-action-error {
+  margin-top: 10px;
 }
 
 .status-badge {
@@ -493,6 +512,7 @@ textarea {
   }
 
   .source-path-row button,
+  .folder-action,
   .refresh-actions,
   .refresh-actions button,
   .chat-panel button {

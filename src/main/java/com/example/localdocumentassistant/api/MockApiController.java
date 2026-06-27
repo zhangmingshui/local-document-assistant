@@ -80,6 +80,14 @@ public class MockApiController {
         }
     }
 
+    @PostMapping("/folders/{folderId}/processing-jobs")
+    public ResponseEntity<?> startProcessingJobForExistingFolder(@PathVariable Long folderId) {
+        return processingJobService.startProcessingJobForExistingSource(folderId)
+                .<ResponseEntity<?>>map(response -> ResponseEntity.status(HttpStatus.ACCEPTED).body(response))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ErrorResponse("No configured folder found for id: " + folderId)));
+    }
+
     @GetMapping("/processing-jobs/{jobId}")
     public ResponseEntity<?> processingJob(@PathVariable String jobId) {
         return processingJobService.pollProcessingJobStatus(jobId)

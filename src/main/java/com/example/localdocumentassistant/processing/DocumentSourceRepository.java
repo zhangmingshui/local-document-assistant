@@ -7,6 +7,8 @@ public interface DocumentSourceRepository {
 
     DocumentSource create(DocumentSource source);
 
+    Optional<DocumentSource> findById(Long id);
+
     Optional<DocumentSource> findByPath(String path);
 
     List<DocumentSource> findAll();

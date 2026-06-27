@@ -29,6 +29,18 @@ export async function startProcessingJob(payload) {
   return body;
 }
 
+export async function startProcessingJobForFolder(folderId) {
+  console.log('Starting mock rescan request', { folderId });
+
+  const response = await fetch(`/api/folders/${folderId}/processing-jobs`, {
+    method: 'POST'
+  });
+  const body = await readJson(response);
+
+  console.log('Starting mock rescan response', body);
+  return body;
+}
+
 export async function getProcessingJobStatus({ jobId, pollUrl }) {
   console.log('Refreshing mock processing status request', { jobId, pollUrl });
 

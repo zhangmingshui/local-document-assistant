@@ -39,6 +39,15 @@ public class ProcessingJobService {
         LOGGER.info("Registered SQLite document source id={} path={} includeSubfolders={} status={}",
                 source.id(), source.path(), source.includeSubfolders(), source.status());
 
+        return startProcessingForSource(source);
+    }
+
+    public Optional<StartProcessingJobResponse> startProcessingJobForExistingSource(Long sourceId) {
+        return documentSourceRepository.findById(sourceId)
+                .map(this::startProcessingForSource);
+    }
+
+    private StartProcessingJobResponse startProcessingForSource(DocumentSource source) {
         String jobId = "job-" + UUID.randomUUID();
         ProcessingJob job = processingJobRepository.create(new ProcessingJob(
                 null,

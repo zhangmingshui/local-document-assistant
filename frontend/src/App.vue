@@ -4,7 +4,8 @@ import { askQuestion as askQuestionApi } from './api/questionsApi';
 import {
   getFolders,
   getProcessingJobStatus,
-  startProcessingJob
+  startProcessingJob,
+  startProcessingJobForFolder
 } from './api/processingJobsApi';
 import AskAnswer from './components/AskAnswer.vue';
 import ProcessingStatus from './components/ProcessingStatus.vue';
@@ -14,6 +15,8 @@ const folders = ref([]);
 const sourceJob = ref(null);
 const isStartingSourceJob = ref(false);
 const sourceError = ref('');
+const rescanError = ref('');
+const rescanningFolderId = ref(null);
 
 const processingStatusResponse = ref(null);
 const isRefreshingStatus = ref(false);
@@ -74,6 +77,7 @@ async function loadFolders() {
 
 async function useMockSourceFolder(payload) {
   sourceError.value = '';
+  rescanError.value = '';
   sourceJob.value = null;
   processingStatusResponse.value = null;
   stopPollingStatus();
@@ -89,6 +93,26 @@ async function useMockSourceFolder(payload) {
     sourceError.value = requestError.message;
   } finally {
     isStartingSourceJob.value = false;
+  }
+}
+
+async function processExistingFolder(folderId) {
+  sourceError.value = '';
+  rescanError.value = '';
+  sourceJob.value = null;
+  processingStatusResponse.value = null;
+  stopPollingStatus();
+  lastRefreshedAt.value = '';
+  refreshError.value = '';
+  rescanningFolderId.value = folderId;
+
+  try {
+    sourceJob.value = await startProcessingJobForFolder(folderId);
+    startPollingStatus();
+  } catch (requestError) {
+    rescanError.value = requestError.message;
+  } finally {
+    rescanningFolderId.value = null;
   }
 }
 
@@ -181,8 +205,12 @@ onUnmounted(stopPollingStatus);
       :source-job="sourceJob"
       :loading="isStartingSourceJob"
       :error="sourceError"
+      :rescan-error="rescanError"
+      :rescanning-folder-id="rescanningFolderId"
       @start-processing="useMockSourceFolder"
+      @process-existing-folder="processExistingFolder"
       @clear-error="sourceError = ''"
+      @clear-rescan-error="rescanError = ''"
     />
 
     <ProcessingStatus

@@ -58,6 +58,26 @@ public class JdbcDocumentSourceRepository implements DocumentSourceRepository {
     }
 
     @Override
+    public Optional<DocumentSource> findById(Long id) {
+        List<DocumentSource> sources = jdbcTemplate.query(
+                """
+                        SELECT id, path, include_subfolders, status
+                        FROM watched_folders
+                        WHERE id = ?
+                        """,
+                (rs, rowNum) -> mapDocumentSource(
+                        rs.getLong("id"),
+                        rs.getString("path"),
+                        rs.getInt("include_subfolders"),
+                        rs.getString("status")
+                ),
+                id
+        );
+
+        return sources.stream().findFirst();
+    }
+
+    @Override
     public Optional<DocumentSource> findByPath(String path) {
         List<DocumentSource> sources = jdbcTemplate.query(
                 """
