@@ -1,0 +1,15 @@
+package com.example.localdocumentassistant.documentsource;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface DocumentSourceRepository {
+
+    DocumentSource create(DocumentSource source);
+
+    Optional<DocumentSource> findById(Long id);
+
+    Optional<DocumentSource> findByPath(String path);
+
+    List<DocumentSource> findAll();
+}

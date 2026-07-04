@@ -14,12 +14,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.localdocumentassistant.document.DocumentService;
-import com.example.localdocumentassistant.processing.ProcessingJobService;
-import com.example.localdocumentassistant.processing.ProcessingJobStatus;
-import com.example.localdocumentassistant.source.DocumentSourceService;
-import com.example.localdocumentassistant.source.DocumentSourceService.DocumentSourceSummary;
-import com.example.localdocumentassistant.source.DuplicateDocumentSourceException;
+import com.example.localdocumentassistant.documentsource.DocumentSourceService;
+import com.example.localdocumentassistant.documentsource.DocumentSourceService.DocumentSourceSummary;
+import com.example.localdocumentassistant.documentsource.DuplicateDocumentSourceException;
+import com.example.localdocumentassistant.documentcatalog.DocumentQueryService;
+import com.example.localdocumentassistant.ingestion.IngestionJobService;
+import com.example.localdocumentassistant.ingestion.IngestionJobStatus;
 
 @RestController
 @RequestMapping("/api")
@@ -27,17 +27,17 @@ import com.example.localdocumentassistant.source.DuplicateDocumentSourceExceptio
 public class MockApiController {
 
     private final DocumentSourceService documentSourceService;
-    private final DocumentService documentService;
-    private final ProcessingJobService processingJobService;
+    private final DocumentQueryService documentQueryService;
+    private final IngestionJobService ingestionJobService;
 
     public MockApiController(
             DocumentSourceService documentSourceService,
-            DocumentService documentService,
-            ProcessingJobService processingJobService
+            DocumentQueryService documentQueryService,
+            IngestionJobService ingestionJobService
     ) {
         this.documentSourceService = documentSourceService;
-        this.documentService = documentService;
-        this.processingJobService = processingJobService;
+        this.documentQueryService = documentQueryService;
+        this.ingestionJobService = ingestionJobService;
     }
 
     @GetMapping("/folders")
@@ -56,7 +56,7 @@ public class MockApiController {
                     .body(new ErrorResponse("Page must be zero or greater and pageSize must be between 1 and 100."));
         }
 
-        return documentService.getDocuments(folderId, page, pageSize)
+        return documentQueryService.getDocuments(folderId, page, pageSize)
                 .<ResponseEntity<?>>map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(new ErrorResponse("No configured folder found for id: " + folderId)));
@@ -67,7 +67,7 @@ public class MockApiController {
         return new ProcessingJobResponse(
                 "job-2026-001",
                 "Indexing mocked documents",
-                ProcessingJobStatus.RUNNING.name(),
+                IngestionJobStatus.RUNNING.name(),
                 68,
                 46,
                 67,
@@ -95,7 +95,7 @@ public class MockApiController {
 
         try {
             return ResponseEntity.status(HttpStatus.ACCEPTED)
-                    .body(processingJobService.startProcessingJob(trimmedRequest));
+                    .body(ingestionJobService.startProcessingJob(trimmedRequest));
         } catch (DuplicateDocumentSourceException duplicateError) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ErrorResponse(duplicateError.getMessage()));
@@ -104,7 +104,7 @@ public class MockApiController {
 
     @PostMapping("/folders/{folderId}/processing-jobs")
     public ResponseEntity<?> startProcessingJobForExistingFolder(@PathVariable Long folderId) {
-        return processingJobService.startProcessingJobForExistingSource(folderId)
+        return ingestionJobService.startProcessingJobForExistingSource(folderId)
                 .<ResponseEntity<?>>map(response -> ResponseEntity.status(HttpStatus.ACCEPTED).body(response))
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(new ErrorResponse("No configured folder found for id: " + folderId)));
@@ -112,7 +112,7 @@ public class MockApiController {
 
     @GetMapping("/processing-jobs/{jobId}")
     public ResponseEntity<?> processingJob(@PathVariable String jobId) {
-        return processingJobService.pollProcessingJobStatus(jobId)
+        return ingestionJobService.pollProcessingJobStatus(jobId)
                 .<ResponseEntity<?>>map(job -> ResponseEntity.ok(job))
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(new ErrorResponse("No mocked processing job found for id: " + jobId)));

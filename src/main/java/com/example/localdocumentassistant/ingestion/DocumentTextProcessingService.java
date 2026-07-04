@@ -1,0 +1,75 @@
+package com.example.localdocumentassistant.ingestion;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+import com.example.localdocumentassistant.documentcatalog.Document;
+import com.example.localdocumentassistant.documentcatalog.DocumentProcessingStatus;
+import com.example.localdocumentassistant.documentcatalog.DocumentRepository;
+
+@Service
+public class DocumentTextProcessingService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentTextProcessingService.class);
+
+    private final DocumentRepository documentRepository;
+    private final List<DocumentTextExtractor> extractors;
+    private final TextChunker textChunker;
+
+    public DocumentTextProcessingService(
+            DocumentRepository documentRepository,
+            List<DocumentTextExtractor> extractors,
+            TextChunker textChunker
+    ) {
+        this.documentRepository = documentRepository;
+        this.extractors = extractors;
+        this.textChunker = textChunker;
+    }
+
+    public void processDocuments(Long watchedFolderId) {
+        documentRepository.findByWatchedFolderId(watchedFolderId).stream()
+                .filter(document -> document.processingStatus() == DocumentProcessingStatus.NEEDS_PROCESSING)
+                .forEach(this::processDocumentIfSupported);
+    }
+
+    private void processDocumentIfSupported(Document document) {
+        Optional<DocumentTextExtractor> extractor = extractors.stream()
+                .filter(candidate -> candidate.supports(document.fileType()))
+                .findFirst();
+
+        if (extractor.isEmpty()) {
+            LOGGER.info("No text extractor is available for document type={} path={}",
+                    document.fileType(), document.filePath());
+            return;
+        }
+
+        try {
+            String text = extractor.orElseThrow().extract(Path.of(document.filePath()));
+            List<TextChunk> chunks = textChunker.chunk(text);
+            documentRepository.update(new Document(
+                    document.id(),
+                    document.documentUuid(),
+                    document.watchedFolderId(),
+                    document.filePath(),
+                    document.fileName(),
+                    document.fileType(),
+                    document.fileSize(),
+                    document.lastModifiedAt(),
+                    document.contentHash(),
+                    DocumentProcessingStatus.CHUNKED,
+                    chunks.size(),
+                    Instant.now().toString()
+            ));
+        } catch (IOException extractionError) {
+            throw new UncheckedIOException("Could not extract text from document: " + document.filePath(), extractionError);
+        }
+    }
+}
