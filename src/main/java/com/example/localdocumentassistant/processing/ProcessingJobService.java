@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import com.example.localdocumentassistant.api.MockApiController.ProcessingJobResponse;
 import com.example.localdocumentassistant.api.MockApiController.StartProcessingJobRequest;
 import com.example.localdocumentassistant.api.MockApiController.StartProcessingJobResponse;
+import com.example.localdocumentassistant.source.DocumentSource;
+import com.example.localdocumentassistant.source.DocumentSourceRepository;
 
 @Service
 public class ProcessingJobService {

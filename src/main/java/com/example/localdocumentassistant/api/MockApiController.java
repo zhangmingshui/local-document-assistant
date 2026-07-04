@@ -14,12 +14,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.localdocumentassistant.processing.DocumentService;
-import com.example.localdocumentassistant.processing.DocumentSourceService;
-import com.example.localdocumentassistant.processing.DocumentSourceService.DocumentSourceSummary;
-import com.example.localdocumentassistant.processing.DuplicateDocumentSourceException;
+import com.example.localdocumentassistant.document.DocumentService;
 import com.example.localdocumentassistant.processing.ProcessingJobService;
 import com.example.localdocumentassistant.processing.ProcessingJobStatus;
+import com.example.localdocumentassistant.source.DocumentSourceService;
+import com.example.localdocumentassistant.source.DocumentSourceService.DocumentSourceSummary;
+import com.example.localdocumentassistant.source.DuplicateDocumentSourceException;
 
 @RestController
 @RequestMapping("/api")

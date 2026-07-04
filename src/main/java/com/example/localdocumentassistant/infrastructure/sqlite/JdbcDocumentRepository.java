@@ -13,9 +13,9 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
-import com.example.localdocumentassistant.processing.Document;
-import com.example.localdocumentassistant.processing.DocumentProcessingStatus;
-import com.example.localdocumentassistant.processing.DocumentRepository;
+import com.example.localdocumentassistant.document.Document;
+import com.example.localdocumentassistant.document.DocumentProcessingStatus;
+import com.example.localdocumentassistant.document.DocumentRepository;
 
 @Repository
 public class JdbcDocumentRepository implements DocumentRepository {

@@ -9,9 +9,9 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
-import com.example.localdocumentassistant.processing.DocumentSource;
-import com.example.localdocumentassistant.processing.DocumentSourceRepository;
-import com.example.localdocumentassistant.processing.DuplicateDocumentSourceException;
+import com.example.localdocumentassistant.source.DocumentSource;
+import com.example.localdocumentassistant.source.DocumentSourceRepository;
+import com.example.localdocumentassistant.source.DuplicateDocumentSourceException;
 
 @Repository
 public class JdbcDocumentSourceRepository implements DocumentSourceRepository {

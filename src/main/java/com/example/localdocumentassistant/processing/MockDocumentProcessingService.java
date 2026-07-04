@@ -16,6 +16,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.example.localdocumentassistant.document.DiscoveredDocumentMetadata;
+import com.example.localdocumentassistant.document.DocumentInventoryService;
+import com.example.localdocumentassistant.document.DocumentTextProcessingService;
+import com.example.localdocumentassistant.source.DocumentSource;
+
 import jakarta.annotation.PreDestroy;
 
 @Service
@@ -28,13 +33,16 @@ public class MockDocumentProcessingService {
     private final ExecutorService executorService = Executors.newCachedThreadPool();
     private final ProcessingJobRepository processingJobRepository;
     private final DocumentInventoryService documentInventoryService;
+    private final DocumentTextProcessingService documentTextProcessingService;
 
     public MockDocumentProcessingService(
             ProcessingJobRepository processingJobRepository,
-            DocumentInventoryService documentInventoryService
+            DocumentInventoryService documentInventoryService,
+            DocumentTextProcessingService documentTextProcessingService
     ) {
         this.processingJobRepository = processingJobRepository;
         this.documentInventoryService = documentInventoryService;
+        this.documentTextProcessingService = documentTextProcessingService;
     }
 
     public void startMockProcessing(String jobId, DocumentSource source) {
@@ -58,6 +66,14 @@ public class MockDocumentProcessingService {
             failJob(jobId, "Could not calculate a content hash for a discovered document.", hashingError);
             return;
         }
+
+        try {
+            documentTextProcessingService.processDocuments(source.id());
+        } catch (UncheckedIOException | SecurityException extractionError) {
+            failJob(jobId, "Could not extract text from a discovered document.", extractionError);
+            return;
+        }
+
         ProcessingJob discoveredJob = updateTotalFiles(jobId, discoveredDocuments.size());
         if (discoveredJob == null) {
             return;
