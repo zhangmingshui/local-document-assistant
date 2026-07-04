@@ -8,5 +8,7 @@ public interface IngestionJobRepository {
 
     Optional<IngestionJob> findByJobId(String jobId);
 
+    Optional<IngestionJob> findLatest();
+
     IngestionJob update(IngestionJob job);
 }

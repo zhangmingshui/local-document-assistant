@@ -66,13 +66,17 @@ class DocumentTextProcessingServiceTest {
         Path file = Files.writeString(tempDirectory.resolve("notes.txt"), "Hello world!");
         Document savedDocument = documentRepository.create(needsProcessingDocument(file, "txt"));
 
-        documentTextProcessingService.processDocuments(WATCHED_FOLDER_ID);
+        Document documentToProcess = documentTextProcessingService
+                .findDocumentsNeedingProcessing(WATCHED_FOLDER_ID)
+                .get(0);
+        DocumentProcessingOutcome outcome = documentTextProcessingService.processDocument(documentToProcess);
 
         Document processedDocument = documentRepository.findByDocumentUuid(savedDocument.documentUuid())
                 .orElseThrow();
         assertThat(processedDocument.processingStatus()).isEqualTo(DocumentProcessingStatus.CHUNKED);
         assertThat(processedDocument.chunkCount()).isEqualTo(3);
         assertThat(processedDocument.lastProcessedAt()).isNotBlank();
+        assertThat(outcome).isEqualTo(DocumentProcessingOutcome.SUCCESSFUL);
     }
 
     @Test
@@ -80,13 +84,17 @@ class DocumentTextProcessingServiceTest {
         Path file = Files.writeString(tempDirectory.resolve("legacy.doc"), "Not parsed in this slice");
         Document savedDocument = documentRepository.create(needsProcessingDocument(file, "doc"));
 
-        documentTextProcessingService.processDocuments(WATCHED_FOLDER_ID);
+        Document documentToProcess = documentTextProcessingService
+                .findDocumentsNeedingProcessing(WATCHED_FOLDER_ID)
+                .get(0);
+        DocumentProcessingOutcome outcome = documentTextProcessingService.processDocument(documentToProcess);
 
         Document unprocessedDocument = documentRepository.findByDocumentUuid(savedDocument.documentUuid())
                 .orElseThrow();
         assertThat(unprocessedDocument.processingStatus()).isEqualTo(DocumentProcessingStatus.NEEDS_PROCESSING);
         assertThat(unprocessedDocument.chunkCount()).isZero();
         assertThat(unprocessedDocument.lastProcessedAt()).isNull();
+        assertThat(outcome).isEqualTo(DocumentProcessingOutcome.SKIPPED);
     }
 
     private Document needsProcessingDocument(Path file, String fileType) throws Exception {

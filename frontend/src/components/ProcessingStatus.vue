@@ -107,7 +107,7 @@ function formatFileSize(bytes) {
       <div>
         <p class="eyebrow">Step 2</p>
         <h2>Process documents</h2>
-        <p>Status refreshes automatically every 3 seconds after a mock job starts.</p>
+        <p>Status refreshes automatically every 3 seconds after a processing job starts.</p>
       </div>
       <StatusBadge :label="statusBadgeLabel" :complete="isComplete" />
     </div>
@@ -119,7 +119,7 @@ function formatFileSize(bytes) {
       </div>
       <div>
         <span class="label">Poll URL</span>
-        <strong>{{ sourceJob?.pollUrl ?? 'Start a mocked job to get a poll URL' }}</strong>
+        <strong>{{ sourceJob?.pollUrl ?? 'Start a processing job to get a poll URL' }}</strong>
       </div>
       <div class="refresh-actions">
         <button type="button" :disabled="!sourceJob || isRefreshing" @click="emit('refresh')">
@@ -146,11 +146,11 @@ function formatFileSize(bytes) {
     </p>
 
     <div v-if="!sourceJob" class="empty-state">
-      Configure a source in Step 1 to create a mock processing job before refreshing status.
+      Configure a source in Step 1 to create a processing job before refreshing status.
     </div>
 
     <div v-else-if="!displayedJob" class="empty-state">
-      Mock job created. Status will load automatically; you can also refresh once manually.
+      Processing job created. Status will load automatically; you can also refresh once manually.
     </div>
 
     <template v-if="displayedJob && summary">
@@ -175,7 +175,7 @@ function formatFileSize(bytes) {
       </p>
 
       <p v-if="isComplete" class="completed-message">
-        Mock processing completed. Polling has stopped; you can still refresh manually.
+        Processing completed. Polling has stopped; you can still refresh manually.
       </p>
 
       <div v-if="!isFailed" class="status-grid">

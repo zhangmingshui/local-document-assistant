@@ -49,7 +49,7 @@ function submitQuestion() {
         This is currently mocked. In the real app, answers will use indexed documents after processing completes.
       </p>
       <p v-else class="ready-message">
-        Mock processing is complete. Answers are still mocked, but this is the intended point to ask.
+        Document processing is complete. Answers are still mocked, but this is the intended point to ask.
       </p>
       <textarea
         id="question"

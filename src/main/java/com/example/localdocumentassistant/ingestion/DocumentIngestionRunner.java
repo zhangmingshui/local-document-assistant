@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.example.localdocumentassistant.documentcatalog.Document;
 import com.example.localdocumentassistant.documentsource.DocumentSource;
 
 import jakarta.annotation.PreDestroy;
@@ -43,7 +44,7 @@ public class DocumentIngestionRunner {
     }
 
     public void startIngestion(String jobId, DocumentSource source) {
-        executorService.submit(() -> runMockProcessing(jobId, source));
+        executorService.submit(() -> runIngestion(jobId, source));
     }
 
     @PreDestroy
@@ -51,12 +52,18 @@ public class DocumentIngestionRunner {
         executorService.shutdownNow();
     }
 
-    private void runMockProcessing(String jobId, DocumentSource source) {
+    void runIngestion(String jobId, DocumentSource source) {
+        IngestionJob currentJob = updateJobForScanning(jobId);
+        if (currentJob == null) {
+            return;
+        }
+
         List<DiscoveredDocumentMetadata> discoveredDocuments = scanConfiguredFolder(jobId, source);
         if (discoveredDocuments == null) {
             return;
         }
 
+        currentJob = updateCurrentStep(currentJob, "Checking document inventory and content changes");
         try {
             documentInventoryService.persistDiscoveredDocuments(source, discoveredDocuments);
         } catch (UncheckedIOException | SecurityException hashingError) {
@@ -64,42 +71,22 @@ public class DocumentIngestionRunner {
             return;
         }
 
-        try {
-            documentTextProcessingService.processDocuments(source.id());
-        } catch (UncheckedIOException | SecurityException extractionError) {
-            failJob(jobId, "Could not extract text from a discovered document.", extractionError);
+        List<Document> documentsToProcess = documentTextProcessingService
+                .findDocumentsNeedingProcessing(source.id());
+        currentJob = initializeDocumentProcessing(currentJob, documentsToProcess.size());
+
+        if (documentsToProcess.isEmpty()) {
+            completeJob(currentJob);
             return;
         }
 
-        IngestionJob discoveredJob = updateTotalFiles(jobId, discoveredDocuments.size());
-        if (discoveredJob == null) {
-            return;
+        for (Document document : documentsToProcess) {
+            currentJob = markCurrentDocument(currentJob, document);
+            DocumentProcessingOutcome outcome = documentTextProcessingService.processDocument(document);
+            currentJob = recordDocumentOutcome(currentJob, document, outcome);
         }
 
-        if (discoveredDocuments.isEmpty()) {
-            ingestionJobRepository.update(completedJobState(
-                    discoveredJob,
-                    0,
-                    "Mock run completed. No supported .doc/.txt files were discovered."
-            ));
-            return;
-        }
-
-        int[] checkpoints = progressCheckpoints(discoveredDocuments.size());
-
-        for (int processedFiles : checkpoints) {
-            if (!sleepBetweenMockUpdates()) {
-                return;
-            }
-
-            IngestionJob currentJob = ingestionJobRepository.findByJobId(jobId).orElse(null);
-            if (currentJob == null) {
-                LOGGER.warn("Stopping mocked processing because job {} was not found.", jobId);
-                return;
-            }
-
-            ingestionJobRepository.update(nextMockState(currentJob, processedFiles));
-        }
+        completeJob(currentJob);
     }
 
     private List<DiscoveredDocumentMetadata> scanConfiguredFolder(String jobId, DocumentSource source) {
@@ -178,13 +165,53 @@ public class DocumentIngestionRunner {
         }
     }
 
-    private IngestionJob updateTotalFiles(String jobId, int totalFiles) {
+    private IngestionJob updateJobForScanning(String jobId) {
         IngestionJob currentJob = ingestionJobRepository.findByJobId(jobId).orElse(null);
         if (currentJob == null) {
-            LOGGER.warn("Could not update total files because job {} was not found.", jobId);
+            LOGGER.warn("Could not start ingestion because job {} was not found.", jobId);
             return null;
         }
 
+        return ingestionJobRepository.update(new IngestionJob(
+                currentJob.id(),
+                currentJob.jobId(),
+                currentJob.watchedFolderId(),
+                IngestionJobStatus.RUNNING,
+                0,
+                0,
+                0,
+                0,
+                0,
+                null,
+                "Scanning configured folder",
+                currentJob.currentChunk(),
+                currentJob.totalChunksForCurrentFile(),
+                currentJob.startedAt(),
+                null
+        ));
+    }
+
+    private IngestionJob updateCurrentStep(IngestionJob currentJob, String currentStep) {
+        return ingestionJobRepository.update(new IngestionJob(
+                currentJob.id(),
+                currentJob.jobId(),
+                currentJob.watchedFolderId(),
+                currentJob.status(),
+                currentJob.totalFiles(),
+                currentJob.processedFiles(),
+                currentJob.successfulFiles(),
+                currentJob.failedFiles(),
+                currentJob.skippedFiles(),
+                currentJob.currentFile(),
+                currentStep,
+                currentJob.currentChunk(),
+                currentJob.totalChunksForCurrentFile(),
+                currentJob.startedAt(),
+                currentJob.completedAt()
+        ));
+    }
+
+    private IngestionJob initializeDocumentProcessing(IngestionJob currentJob, int totalFiles) {
         return ingestionJobRepository.update(new IngestionJob(
                 currentJob.id(),
                 currentJob.jobId(),
@@ -195,8 +222,8 @@ public class DocumentIngestionRunner {
                 0,
                 0,
                 0,
-                currentJob.currentFile(),
-                "Discovered " + totalFiles + " supported .doc/.txt file(s)",
+                null,
+                "Processing documents that need work",
                 currentJob.currentChunk(),
                 currentJob.totalChunksForCurrentFile(),
                 currentJob.startedAt(),
@@ -204,16 +231,93 @@ public class DocumentIngestionRunner {
         ));
     }
 
-    private int[] progressCheckpoints(int totalFiles) {
-        return Stream.of(
-                        Math.max(1, totalFiles / 4),
-                        Math.max(1, totalFiles / 2),
-                        Math.max(1, totalFiles * 3 / 4),
-                        totalFiles
-                )
-                .mapToInt(Integer::intValue)
-                .distinct()
-                .toArray();
+    private IngestionJob markCurrentDocument(IngestionJob currentJob, Document document) {
+        return ingestionJobRepository.update(new IngestionJob(
+                currentJob.id(),
+                currentJob.jobId(),
+                currentJob.watchedFolderId(),
+                IngestionJobStatus.RUNNING,
+                currentJob.totalFiles(),
+                currentJob.processedFiles(),
+                currentJob.successfulFiles(),
+                currentJob.failedFiles(),
+                currentJob.skippedFiles(),
+                document.filePath(),
+                "Processing " + document.fileName(),
+                currentJob.currentChunk(),
+                currentJob.totalChunksForCurrentFile(),
+                currentJob.startedAt(),
+                null
+        ));
+    }
+
+    private IngestionJob recordDocumentOutcome(
+            IngestionJob currentJob,
+            Document document,
+            DocumentProcessingOutcome outcome
+    ) {
+        int successfulFiles = currentJob.successfulFiles()
+                + (outcome == DocumentProcessingOutcome.SUCCESSFUL ? 1 : 0);
+        int failedFiles = currentJob.failedFiles()
+                + (outcome == DocumentProcessingOutcome.FAILED ? 1 : 0);
+        int skippedFiles = currentJob.skippedFiles()
+                + (outcome == DocumentProcessingOutcome.SKIPPED ? 1 : 0);
+
+        String currentStep = switch (outcome) {
+            case SUCCESSFUL -> "Chunked " + document.fileName();
+            case SKIPPED -> "No extractor available for " + document.fileName();
+            case FAILED -> "Could not process " + document.fileName();
+        };
+
+        return ingestionJobRepository.update(new IngestionJob(
+                currentJob.id(),
+                currentJob.jobId(),
+                currentJob.watchedFolderId(),
+                IngestionJobStatus.RUNNING,
+                currentJob.totalFiles(),
+                currentJob.processedFiles() + 1,
+                successfulFiles,
+                failedFiles,
+                skippedFiles,
+                document.filePath(),
+                currentStep,
+                currentJob.currentChunk(),
+                currentJob.totalChunksForCurrentFile(),
+                currentJob.startedAt(),
+                null
+        ));
+    }
+
+    private void completeJob(IngestionJob currentJob) {
+        boolean completedWithErrors = currentJob.failedFiles() > 0;
+        String currentStep;
+        if (currentJob.totalFiles() == 0) {
+            currentStep = "No documents needed processing";
+        } else if (completedWithErrors) {
+            currentStep = "Processing completed with errors";
+        } else {
+            currentStep = "Processing completed";
+        }
+
+        ingestionJobRepository.update(new IngestionJob(
+                currentJob.id(),
+                currentJob.jobId(),
+                currentJob.watchedFolderId(),
+                completedWithErrors
+                        ? IngestionJobStatus.COMPLETED_WITH_ERRORS
+                        : IngestionJobStatus.COMPLETED,
+                currentJob.totalFiles(),
+                currentJob.processedFiles(),
+                currentJob.successfulFiles(),
+                currentJob.failedFiles(),
+                currentJob.skippedFiles(),
+                null,
+                currentStep,
+                currentJob.currentChunk(),
+                currentJob.totalChunksForCurrentFile(),
+                currentJob.startedAt(),
+                Instant.now().toString()
+        ));
     }
 
     private String extensionFor(String fileName) {
@@ -255,91 +359,6 @@ public class DocumentIngestionRunner {
                 currentJob.startedAt(),
                 Instant.now().toString()
         ));
-    }
-
-    private IngestionJob nextMockState(IngestionJob currentJob, int processedFiles) {
-        boolean complete = processedFiles >= currentJob.totalFiles();
-        int failedFiles = complete && currentJob.totalFiles() >= 2 ? 1 : 0;
-        int skippedFiles = complete && currentJob.totalFiles() >= 3 ? 1 : 0;
-        int successfulFiles = Math.max(processedFiles - failedFiles - skippedFiles, 0);
-
-        return new IngestionJob(
-                currentJob.id(),
-                currentJob.jobId(),
-                currentJob.watchedFolderId(),
-                statusForMockProgress(complete, failedFiles, skippedFiles),
-                currentJob.totalFiles(),
-                processedFiles,
-                successfulFiles,
-                failedFiles,
-                skippedFiles,
-                currentJob.currentFile(),
-                currentStepFor(processedFiles, currentJob.totalFiles()),
-                currentJob.currentChunk(),
-                currentJob.totalChunksForCurrentFile(),
-                currentJob.startedAt(),
-                complete ? Instant.now().toString() : null
-        );
-    }
-
-    private IngestionJob completedJobState(IngestionJob currentJob, int processedFiles, String currentStep) {
-        return new IngestionJob(
-                currentJob.id(),
-                currentJob.jobId(),
-                currentJob.watchedFolderId(),
-                IngestionJobStatus.COMPLETED,
-                currentJob.totalFiles(),
-                processedFiles,
-                processedFiles,
-                0,
-                0,
-                currentJob.currentFile(),
-                currentStep,
-                currentJob.currentChunk(),
-                currentJob.totalChunksForCurrentFile(),
-                currentJob.startedAt(),
-                Instant.now().toString()
-        );
-    }
-
-    private IngestionJobStatus statusForMockProgress(boolean complete, int failedFiles, int skippedFiles) {
-        if (!complete) {
-            return IngestionJobStatus.RUNNING;
-        }
-
-        return failedFiles > 0 || skippedFiles > 0
-                ? IngestionJobStatus.COMPLETED_WITH_ERRORS
-                : IngestionJobStatus.COMPLETED;
-    }
-
-    private String currentStepFor(int processedFiles, int totalFiles) {
-        if (processedFiles >= totalFiles) {
-            if (totalFiles >= 3) {
-                return "Mock run completed with one failed file and one skipped file";
-            }
-
-            if (totalFiles == 2) {
-                return "Mock run completed with one failed file";
-            }
-
-            return "Mock run completed";
-        }
-
-        if (processedFiles <= 5) {
-            return "Preparing mocked file list";
-        }
-
-        return "Updating mocked processing counters";
-    }
-
-    private boolean sleepBetweenMockUpdates() {
-        try {
-            Thread.sleep(1500);
-            return true;
-        } catch (InterruptedException interrupted) {
-            Thread.currentThread().interrupt();
-            return false;
-        }
     }
 
 }

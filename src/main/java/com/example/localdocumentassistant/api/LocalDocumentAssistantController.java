@@ -19,18 +19,17 @@ import com.example.localdocumentassistant.documentsource.DocumentSourceService.D
 import com.example.localdocumentassistant.documentsource.DuplicateDocumentSourceException;
 import com.example.localdocumentassistant.documentcatalog.DocumentQueryService;
 import com.example.localdocumentassistant.ingestion.IngestionJobService;
-import com.example.localdocumentassistant.ingestion.IngestionJobStatus;
 
 @RestController
 @RequestMapping("/api")
 @CrossOrigin(origins = "http://localhost:5173")
-public class MockApiController {
+public class LocalDocumentAssistantController {
 
     private final DocumentSourceService documentSourceService;
     private final DocumentQueryService documentQueryService;
     private final IngestionJobService ingestionJobService;
 
-    public MockApiController(
+    public LocalDocumentAssistantController(
             DocumentSourceService documentSourceService,
             DocumentQueryService documentQueryService,
             IngestionJobService ingestionJobService
@@ -63,20 +62,11 @@ public class MockApiController {
     }
 
     @GetMapping("/processing-jobs/latest")
-    public ProcessingJobResponse latestProcessingJob() {
-        return new ProcessingJobResponse(
-                "job-2026-001",
-                "Indexing mocked documents",
-                IngestionJobStatus.RUNNING.name(),
-                68,
-                46,
-                67,
-                41,
-                2,
-                3,
-                "Reading mocked metadata and preparing preview records",
-                Instant.parse("2026-06-18T09:30:00Z")
-        );
+    public ResponseEntity<?> latestProcessingJob() {
+        return ingestionJobService.getLatestProcessingJobStatus()
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ErrorResponse("No processing jobs found.")));
     }
 
     @PostMapping("/processing-jobs")
@@ -115,7 +105,7 @@ public class MockApiController {
         return ingestionJobService.pollProcessingJobStatus(jobId)
                 .<ResponseEntity<?>>map(job -> ResponseEntity.ok(job))
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(new ErrorResponse("No mocked processing job found for id: " + jobId)));
+                        .body(new ErrorResponse("No processing job found for id: " + jobId)));
     }
 
     @PostMapping("/questions")
@@ -128,20 +118,21 @@ public class MockApiController {
         String question = request.question().trim();
 
         QuestionResponse response = new QuestionResponse(
-                "Based on mocked indexed documents, the answer to \"" + question
-                        + "\" is that this prototype can show a realistic Q&A flow without retrieval or model calls.",
+                "Prototype response for \"" + question
+                        + "\". Document retrieval and model calls are not implemented yet, "
+                        + "so this answer is not generated from your documents.",
                 List.of(
                         new SourceResponse(
-                                "project-notes.pdf",
-                                "/Users/demo/Documents/Mock Research/project-notes.pdf",
-                                3,
-                                "Mock excerpt: the local assistant should answer from indexed document snippets once real retrieval exists."
+                                "example-notes.txt",
+                                "/prototype/examples/example-notes.txt",
+                                1,
+                                "Placeholder source only. Document retrieval is not implemented yet."
                         ),
                         new SourceResponse(
-                                "invoice-summary.pdf",
-                                "/Users/demo/Documents/Mock Invoices/invoice-summary.pdf",
+                                "example-summary.txt",
+                                "/prototype/examples/example-summary.txt",
                                 1,
-                                "Mock excerpt: source cards show where an answer might have come from after indexing is implemented."
+                                "Placeholder source only. Model-generated answers are not implemented yet."
                         )
                 )
         );

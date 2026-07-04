@@ -56,7 +56,7 @@ function processExistingFolder(folderId) {
     <div class="section-heading">
       <p class="eyebrow">Step 1</p>
       <h2>Configure source</h2>
-      <p>Enter the folder path the real app will eventually index. This prototype sends the path as a mock request only.</p>
+      <p>Enter the folder path to scan for supported documents.</p>
     </div>
 
     <form class="source-form" @submit.prevent="submitSource">

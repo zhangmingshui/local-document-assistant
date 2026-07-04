@@ -17,9 +17,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.example.localdocumentassistant.api.MockApiController.ProcessingJobResponse;
-import com.example.localdocumentassistant.api.MockApiController.StartProcessingJobRequest;
-import com.example.localdocumentassistant.api.MockApiController.StartProcessingJobResponse;
+import com.example.localdocumentassistant.api.LocalDocumentAssistantController.ProcessingJobResponse;
+import com.example.localdocumentassistant.api.LocalDocumentAssistantController.StartProcessingJobRequest;
+import com.example.localdocumentassistant.api.LocalDocumentAssistantController.StartProcessingJobResponse;
 import com.example.localdocumentassistant.documentsource.DocumentSource;
 import com.example.localdocumentassistant.documentsource.DocumentSourceRepository;
 
@@ -68,10 +68,14 @@ class IngestionJobServiceTest {
         assertThat(createdJob.jobId()).startsWith("job-");
         assertThat(createdJob.watchedFolderId()).isEqualTo(savedSource.id());
         assertThat(createdJob.status()).isEqualTo(IngestionJobStatus.PENDING);
+        assertThat(createdJob.totalFiles()).isZero();
+        assertThat(createdJob.processedFiles()).isZero();
+        assertThat(createdJob.currentStep()).isEqualTo("Waiting to start processing");
 
         verify(documentIngestionRunner).startIngestion(createdJob.jobId(), savedSource);
         assertThat(response.jobId()).isEqualTo(createdJob.jobId());
         assertThat(response.pollUrl()).isEqualTo("/api/processing-jobs/" + createdJob.jobId());
+        assertThat(response.message()).doesNotContainIgnoringCase("mock");
     }
 
     @Test

@@ -87,7 +87,7 @@ async function loadFolders() {
   }
 }
 
-async function useMockSourceFolder(payload) {
+async function useSourceFolder(payload) {
   sourceError.value = '';
   rescanError.value = '';
   sourceJob.value = null;
@@ -186,7 +186,7 @@ async function refreshProcessingStatus() {
   const jobToRefresh = sourceJob.value;
 
   if (!jobToRefresh?.pollUrl) {
-    refreshError.value = 'Start a mock processing job before refreshing status.';
+    refreshError.value = 'Start a processing job before refreshing status.';
     return;
   }
 
@@ -257,11 +257,11 @@ onUnmounted(stopPollingStatus);
   <main class="app-shell">
     <header class="app-header">
       <div>
-        <p class="eyebrow">Mac-first mock prototype</p>
+        <p class="eyebrow">Mac-first local prototype</p>
         <h1>Local Document Assistant</h1>
-        <p class="app-subtitle">A small mocked workflow for configuring a source, processing it, and asking questions.</p>
+        <p class="app-subtitle">Configure a local source, process supported documents, and explore the question flow.</p>
       </div>
-      <span class="header-pill">Mock data only</span>
+      <span class="header-pill">Local processing</span>
     </header>
 
     <p v-if="error" class="error">{{ error }}</p>
@@ -273,7 +273,7 @@ onUnmounted(stopPollingStatus);
       :error="sourceError"
       :rescan-error="rescanError"
       :rescanning-folder-id="rescanningFolderId"
-      @start-processing="useMockSourceFolder"
+      @start-processing="useSourceFolder"
       @process-existing-folder="processExistingFolder"
       @clear-error="sourceError = ''"
       @clear-rescan-error="rescanError = ''"

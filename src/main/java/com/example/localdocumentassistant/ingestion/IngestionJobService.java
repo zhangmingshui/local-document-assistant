@@ -8,9 +8,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import com.example.localdocumentassistant.api.MockApiController.ProcessingJobResponse;
-import com.example.localdocumentassistant.api.MockApiController.StartProcessingJobRequest;
-import com.example.localdocumentassistant.api.MockApiController.StartProcessingJobResponse;
+import com.example.localdocumentassistant.api.LocalDocumentAssistantController.ProcessingJobResponse;
+import com.example.localdocumentassistant.api.LocalDocumentAssistantController.StartProcessingJobRequest;
+import com.example.localdocumentassistant.api.LocalDocumentAssistantController.StartProcessingJobResponse;
 import com.example.localdocumentassistant.documentsource.DocumentSource;
 import com.example.localdocumentassistant.documentsource.DocumentSourceRepository;
 
@@ -18,8 +18,6 @@ import com.example.localdocumentassistant.documentsource.DocumentSourceRepositor
 public class IngestionJobService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(IngestionJobService.class);
-    private static final int MOCK_TOTAL_FILES = 20;
-
     private final DocumentSourceRepository documentSourceRepository;
     private final IngestionJobRepository ingestionJobRepository;
     private final DocumentIngestionRunner documentIngestionRunner;
@@ -56,13 +54,13 @@ public class IngestionJobService {
                 jobId,
                 source.id(),
                 IngestionJobStatus.PENDING,
-                MOCK_TOTAL_FILES,
+                0,
                 0,
                 0,
                 0,
                 0,
                 null,
-                "Waiting to start mocked processing",
+                "Waiting to start processing",
                 0,
                 0,
                 Instant.now().toString(),
@@ -73,7 +71,7 @@ public class IngestionJobService {
         return new StartProcessingJobResponse(
                 job.jobId(),
                 job.status().name(),
-                "Mock processing job started. No files are being scanned yet.",
+                "Processing job started.",
                 "/api/processing-jobs/" + job.jobId()
         );
     }
@@ -83,10 +81,15 @@ public class IngestionJobService {
                 .map(this::toResponse);
     }
 
+    public Optional<ProcessingJobResponse> getLatestProcessingJobStatus() {
+        return ingestionJobRepository.findLatest()
+                .map(this::toResponse);
+    }
+
     private ProcessingJobResponse toResponse(IngestionJob job) {
         return new ProcessingJobResponse(
                 job.jobId(),
-                "Indexing discovered documents",
+                "Processing documents",
                 job.status().name(),
                 progressPercent(job),
                 job.processedFiles(),

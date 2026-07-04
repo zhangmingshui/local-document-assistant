@@ -1,7 +1,6 @@
 package com.example.localdocumentassistant.ingestion;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
@@ -34,13 +33,13 @@ public class DocumentTextProcessingService {
         this.textChunker = textChunker;
     }
 
-    public void processDocuments(Long watchedFolderId) {
-        documentRepository.findByWatchedFolderId(watchedFolderId).stream()
+    public List<Document> findDocumentsNeedingProcessing(Long watchedFolderId) {
+        return documentRepository.findByWatchedFolderId(watchedFolderId).stream()
                 .filter(document -> document.processingStatus() == DocumentProcessingStatus.NEEDS_PROCESSING)
-                .forEach(this::processDocumentIfSupported);
+                .toList();
     }
 
-    private void processDocumentIfSupported(Document document) {
+    public DocumentProcessingOutcome processDocument(Document document) {
         Optional<DocumentTextExtractor> extractor = extractors.stream()
                 .filter(candidate -> candidate.supports(document.fileType()))
                 .findFirst();
@@ -48,7 +47,7 @@ public class DocumentTextProcessingService {
         if (extractor.isEmpty()) {
             LOGGER.info("No text extractor is available for document type={} path={}",
                     document.fileType(), document.filePath());
-            return;
+            return DocumentProcessingOutcome.SKIPPED;
         }
 
         try {
@@ -68,8 +67,10 @@ public class DocumentTextProcessingService {
                     chunks.size(),
                     Instant.now().toString()
             ));
-        } catch (IOException extractionError) {
-            throw new UncheckedIOException("Could not extract text from document: " + document.filePath(), extractionError);
+            return DocumentProcessingOutcome.SUCCESSFUL;
+        } catch (IOException | RuntimeException processingError) {
+            LOGGER.warn("Could not extract or chunk document path={}", document.filePath(), processingError);
+            return DocumentProcessingOutcome.FAILED;
         }
     }
 }

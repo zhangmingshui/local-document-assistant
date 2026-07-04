@@ -2,7 +2,7 @@ async function readJson(response) {
   const body = await response.json();
 
   if (!response.ok) {
-    throw new Error(body.message ?? 'Mock processing request failed');
+    throw new Error(body.message ?? 'Processing request failed');
   }
 
   return body;
@@ -14,7 +14,7 @@ export async function getFolders() {
 }
 
 export async function startProcessingJob(payload) {
-  console.log('Starting mock processing job request', payload);
+  console.log('Starting processing job request', payload);
 
   const response = await fetch('/api/processing-jobs', {
     method: 'POST',
@@ -25,28 +25,28 @@ export async function startProcessingJob(payload) {
   });
   const body = await readJson(response);
 
-  console.log('Starting mock processing job response', body);
+  console.log('Starting processing job response', body);
   return body;
 }
 
 export async function startProcessingJobForFolder(folderId) {
-  console.log('Starting mock rescan request', { folderId });
+  console.log('Starting rescan request', { folderId });
 
   const response = await fetch(`/api/folders/${folderId}/processing-jobs`, {
     method: 'POST'
   });
   const body = await readJson(response);
 
-  console.log('Starting mock rescan response', body);
+  console.log('Starting rescan response', body);
   return body;
 }
 
 export async function getProcessingJobStatus({ jobId, pollUrl }) {
-  console.log('Refreshing mock processing status request', { jobId, pollUrl });
+  console.log('Refreshing processing status request', { jobId, pollUrl });
 
   const response = await fetch(pollUrl);
   const body = await readJson(response);
 
-  console.log('Refreshing mock processing status response', body);
+  console.log('Refreshing processing status response', body);
   return body;
 }

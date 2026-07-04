@@ -125,6 +125,15 @@ public class JdbcIngestionJobRepository implements IngestionJobRepository {
     }
 
     @Override
+    public Optional<IngestionJob> findLatest() {
+        List<IngestionJob> jobs = jdbcTemplate.query(
+                selectJobsSql() + " ORDER BY id DESC LIMIT 1",
+                this::mapJob
+        );
+        return jobs.stream().findFirst();
+    }
+
+    @Override
     public IngestionJob update(IngestionJob job) {
         jdbcTemplate.update(
                 """
@@ -180,6 +189,47 @@ public class JdbcIngestionJobRepository implements IngestionJobRepository {
                 job.totalChunksForCurrentFile(),
                 job.startedAt(),
                 job.completedAt()
+        );
+    }
+
+    private String selectJobsSql() {
+        return """
+                SELECT id,
+                       job_id,
+                       watched_folder_id,
+                       status,
+                       total_files,
+                       processed_files,
+                       successful_files,
+                       failed_files,
+                       skipped_files,
+                       current_file,
+                       current_step,
+                       current_chunk,
+                       total_chunks_for_current_file,
+                       started_at,
+                       completed_at
+                FROM processing_jobs
+                """;
+    }
+
+    private IngestionJob mapJob(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+        return new IngestionJob(
+                rs.getLong("id"),
+                rs.getString("job_id"),
+                rs.getLong("watched_folder_id"),
+                IngestionJobStatus.valueOf(rs.getString("status")),
+                rs.getInt("total_files"),
+                rs.getInt("processed_files"),
+                rs.getInt("successful_files"),
+                rs.getInt("failed_files"),
+                rs.getInt("skipped_files"),
+                rs.getString("current_file"),
+                rs.getString("current_step"),
+                rs.getInt("current_chunk"),
+                rs.getInt("total_chunks_for_current_file"),
+                rs.getString("started_at"),
+                rs.getString("completed_at")
         );
     }
 }
