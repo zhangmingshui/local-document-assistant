@@ -1,4 +1,4 @@
-package com.example.localdocumentassistant.processing;
+package com.example.localdocumentassistant.infrastructure.sqlite;
 
 import java.time.Instant;
 import java.util.List;
@@ -8,6 +8,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
+
+import com.example.localdocumentassistant.processing.DocumentSource;
+import com.example.localdocumentassistant.processing.DocumentSourceRepository;
+import com.example.localdocumentassistant.processing.DuplicateDocumentSourceException;
 
 @Repository
 public class JdbcDocumentSourceRepository implements DocumentSourceRepository {

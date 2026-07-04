@@ -13,6 +13,8 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.sqlite.SQLiteDataSource;
 
+import com.example.localdocumentassistant.infrastructure.sqlite.JdbcDocumentRepository;
+
 class DocumentInventoryServiceTest {
 
     private static final long WATCHED_FOLDER_ID = 42L;
