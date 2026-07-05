@@ -2,7 +2,6 @@ package com.example.localdocumentassistant.ingestion;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,6 +12,7 @@ import org.springframework.stereotype.Service;
 import com.example.localdocumentassistant.documentcatalog.Document;
 import com.example.localdocumentassistant.documentcatalog.DocumentProcessingStatus;
 import com.example.localdocumentassistant.documentcatalog.DocumentRepository;
+import com.example.localdocumentassistant.indexing.DocumentIndexingService;
 
 @Service
 public class DocumentTextProcessingService {
@@ -22,15 +22,18 @@ public class DocumentTextProcessingService {
     private final DocumentRepository documentRepository;
     private final List<DocumentTextExtractor> extractors;
     private final TextChunker textChunker;
+    private final DocumentIndexingService documentIndexingService;
 
     public DocumentTextProcessingService(
             DocumentRepository documentRepository,
             List<DocumentTextExtractor> extractors,
-            TextChunker textChunker
+            TextChunker textChunker,
+            DocumentIndexingService documentIndexingService
     ) {
         this.documentRepository = documentRepository;
         this.extractors = extractors;
         this.textChunker = textChunker;
+        this.documentIndexingService = documentIndexingService;
     }
 
     public List<Document> findDocumentsNeedingProcessing(Long watchedFolderId) {
@@ -53,23 +56,10 @@ public class DocumentTextProcessingService {
         try {
             String text = extractor.orElseThrow().extract(Path.of(document.filePath()));
             List<TextChunk> chunks = textChunker.chunk(text);
-            documentRepository.update(new Document(
-                    document.id(),
-                    document.documentUuid(),
-                    document.watchedFolderId(),
-                    document.filePath(),
-                    document.fileName(),
-                    document.fileType(),
-                    document.fileSize(),
-                    document.lastModifiedAt(),
-                    document.contentHash(),
-                    DocumentProcessingStatus.CHUNKED,
-                    chunks.size(),
-                    Instant.now().toString()
-            ));
+            documentIndexingService.index(document, chunks);
             return DocumentProcessingOutcome.SUCCESSFUL;
         } catch (IOException | RuntimeException processingError) {
-            LOGGER.warn("Could not extract or chunk document path={}", document.filePath(), processingError);
+            LOGGER.warn("Could not extract, chunk, or index document path={}", document.filePath(), processingError);
             return DocumentProcessingOutcome.FAILED;
         }
     }

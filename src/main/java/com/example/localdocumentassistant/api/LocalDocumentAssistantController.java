@@ -19,6 +19,8 @@ import com.example.localdocumentassistant.documentsource.DocumentSourceService.D
 import com.example.localdocumentassistant.documentsource.DuplicateDocumentSourceException;
 import com.example.localdocumentassistant.documentcatalog.DocumentQueryService;
 import com.example.localdocumentassistant.ingestion.IngestionJobService;
+import com.example.localdocumentassistant.indexing.DocumentSearchMatch;
+import com.example.localdocumentassistant.indexing.DocumentSearchService;
 
 @RestController
 @RequestMapping("/api")
@@ -28,15 +30,18 @@ public class LocalDocumentAssistantController {
     private final DocumentSourceService documentSourceService;
     private final DocumentQueryService documentQueryService;
     private final IngestionJobService ingestionJobService;
+    private final DocumentSearchService documentSearchService;
 
     public LocalDocumentAssistantController(
             DocumentSourceService documentSourceService,
             DocumentQueryService documentQueryService,
-            IngestionJobService ingestionJobService
+            IngestionJobService ingestionJobService,
+            DocumentSearchService documentSearchService
     ) {
         this.documentSourceService = documentSourceService;
         this.documentQueryService = documentQueryService;
         this.ingestionJobService = ingestionJobService;
+        this.documentSearchService = documentSearchService;
     }
 
     @GetMapping("/folders")
@@ -108,6 +113,23 @@ public class LocalDocumentAssistantController {
                         .body(new ErrorResponse("No processing job found for id: " + jobId)));
     }
 
+    @PostMapping("/search")
+    public ResponseEntity<?> search(@RequestBody SearchRequest request) {
+        if (request == null || request.query() == null || request.query().isBlank()) {
+            return ResponseEntity.badRequest().body(new ErrorResponse("Search query must not be blank."));
+        }
+
+        int limit = request.limit() == null ? 5 : request.limit();
+        if (limit < 1 || limit > 50) {
+            return ResponseEntity.badRequest().body(new ErrorResponse("Search limit must be between 1 and 50."));
+        }
+
+        List<SearchResultResponse> results = documentSearchService.search(request.query().trim(), limit).stream()
+                .map(this::toSearchResultResponse)
+                .toList();
+        return ResponseEntity.ok(new SearchResponse(results));
+    }
+
     @PostMapping("/questions")
     public ResponseEntity<?> askQuestion(@RequestBody QuestionRequest request) {
         if (request.question() == null || request.question().isBlank()) {
@@ -170,6 +192,33 @@ public class LocalDocumentAssistantController {
     public record SourceResponse(String fileName, String filePath, int chunkNumber, String text) {
     }
 
+    public record SearchRequest(String query, Integer limit) {
+    }
+
+    public record SearchResponse(List<SearchResultResponse> results) {
+    }
+
+    public record SearchResultResponse(
+            String text,
+            String fileName,
+            String filePath,
+            int chunkIndex,
+            Long documentId,
+            String documentUuid
+    ) {
+    }
+
     public record ErrorResponse(String message) {
+    }
+
+    private SearchResultResponse toSearchResultResponse(DocumentSearchMatch match) {
+        return new SearchResultResponse(
+                match.text(),
+                match.fileName(),
+                match.filePath(),
+                match.chunkIndex(),
+                match.documentId(),
+                match.documentUuid()
+        );
     }
 }

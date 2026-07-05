@@ -264,7 +264,7 @@ public class DocumentIngestionRunner {
                 + (outcome == DocumentProcessingOutcome.SKIPPED ? 1 : 0);
 
         String currentStep = switch (outcome) {
-            case SUCCESSFUL -> "Chunked " + document.fileName();
+            case SUCCESSFUL -> "Indexed " + document.fileName();
             case SKIPPED -> "No extractor available for " + document.fileName();
             case FAILED -> "Could not process " + document.fileName();
         };

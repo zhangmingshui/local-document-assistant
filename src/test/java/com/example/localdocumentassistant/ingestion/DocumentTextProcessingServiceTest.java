@@ -1,6 +1,10 @@
 package com.example.localdocumentassistant.ingestion;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,6 +19,8 @@ import org.sqlite.SQLiteDataSource;
 import com.example.localdocumentassistant.documentcatalog.Document;
 import com.example.localdocumentassistant.documentcatalog.DocumentProcessingStatus;
 import com.example.localdocumentassistant.documentcatalog.DocumentRepository;
+import com.example.localdocumentassistant.indexing.DocumentIndexingService;
+import com.example.localdocumentassistant.indexing.DocumentVectorStore;
 import com.example.localdocumentassistant.persistence.JdbcDocumentRepository;
 
 class DocumentTextProcessingServiceTest {
@@ -54,15 +60,21 @@ class DocumentTextProcessingServiceTest {
                 """);
 
         documentRepository = new JdbcDocumentRepository(jdbcTemplate);
+        DocumentIndexingService indexingService = new DocumentIndexingService(
+                documentRepository,
+                text -> List.of(0.1, 0.2),
+                mock(DocumentVectorStore.class)
+        );
         documentTextProcessingService = new DocumentTextProcessingService(
                 documentRepository,
                 List.of(new PlainTextExtractor()),
-                new FixedSizeTextChunker(5)
+                new FixedSizeTextChunker(5),
+                indexingService
         );
     }
 
     @Test
-    void needsProcessingTxtDocumentBecomesChunked() throws Exception {
+    void needsProcessingTxtDocumentBecomesIndexed() throws Exception {
         Path file = Files.writeString(tempDirectory.resolve("notes.txt"), "Hello world!");
         Document savedDocument = documentRepository.create(needsProcessingDocument(file, "txt"));
 
@@ -73,7 +85,7 @@ class DocumentTextProcessingServiceTest {
 
         Document processedDocument = documentRepository.findByDocumentUuid(savedDocument.documentUuid())
                 .orElseThrow();
-        assertThat(processedDocument.processingStatus()).isEqualTo(DocumentProcessingStatus.CHUNKED);
+        assertThat(processedDocument.processingStatus()).isEqualTo(DocumentProcessingStatus.INDEXED);
         assertThat(processedDocument.chunkCount()).isEqualTo(3);
         assertThat(processedDocument.lastProcessedAt()).isNotBlank();
         assertThat(outcome).isEqualTo(DocumentProcessingOutcome.SUCCESSFUL);
@@ -95,6 +107,30 @@ class DocumentTextProcessingServiceTest {
         assertThat(unprocessedDocument.chunkCount()).isZero();
         assertThat(unprocessedDocument.lastProcessedAt()).isNull();
         assertThat(outcome).isEqualTo(DocumentProcessingOutcome.SKIPPED);
+    }
+
+    @Test
+    void indexingFailureLeavesTxtDocumentNeedingProcessing() throws Exception {
+        Path file = Files.writeString(tempDirectory.resolve("retry.txt"), "Retry this document");
+        Document savedDocument = documentRepository.create(needsProcessingDocument(file, "txt"));
+        DocumentIndexingService failingIndexingService = mock(DocumentIndexingService.class);
+        doThrow(new IllegalStateException("Vector service unavailable"))
+                .when(failingIndexingService).index(any(Document.class), anyList());
+        DocumentTextProcessingService service = new DocumentTextProcessingService(
+                documentRepository,
+                List.of(new PlainTextExtractor()),
+                new FixedSizeTextChunker(5),
+                failingIndexingService
+        );
+
+        DocumentProcessingOutcome outcome = service.processDocument(savedDocument);
+
+        Document unprocessedDocument = documentRepository.findByDocumentUuid(savedDocument.documentUuid())
+                .orElseThrow();
+        assertThat(outcome).isEqualTo(DocumentProcessingOutcome.FAILED);
+        assertThat(unprocessedDocument.processingStatus()).isEqualTo(DocumentProcessingStatus.NEEDS_PROCESSING);
+        assertThat(unprocessedDocument.chunkCount()).isZero();
+        assertThat(unprocessedDocument.lastProcessedAt()).isNull();
     }
 
     private Document needsProcessingDocument(Path file, String fileType) throws Exception {

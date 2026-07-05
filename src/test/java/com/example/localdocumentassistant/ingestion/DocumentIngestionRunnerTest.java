@@ -1,6 +1,7 @@
 package com.example.localdocumentassistant.ingestion;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,6 +19,8 @@ import com.example.localdocumentassistant.documentcatalog.Document;
 import com.example.localdocumentassistant.documentcatalog.DocumentProcessingStatus;
 import com.example.localdocumentassistant.documentcatalog.DocumentRepository;
 import com.example.localdocumentassistant.documentsource.DocumentSource;
+import com.example.localdocumentassistant.indexing.DocumentIndexingService;
+import com.example.localdocumentassistant.indexing.DocumentVectorStore;
 import com.example.localdocumentassistant.persistence.JdbcDocumentRepository;
 import com.example.localdocumentassistant.persistence.JdbcIngestionJobRepository;
 
@@ -44,10 +47,16 @@ class DocumentIngestionRunnerTest {
         documentRepository = new JdbcDocumentRepository(jdbcTemplate);
         ingestionJobRepository = new JdbcIngestionJobRepository(jdbcTemplate);
         DocumentInventoryService inventoryService = new DocumentInventoryService(documentRepository);
+        DocumentIndexingService indexingService = new DocumentIndexingService(
+                documentRepository,
+                text -> List.of(0.1, 0.2),
+                mock(DocumentVectorStore.class)
+        );
         DocumentTextProcessingService textProcessingService = new DocumentTextProcessingService(
                 documentRepository,
                 List.of(new PlainTextExtractor()),
-                new FixedSizeTextChunker(5)
+                new FixedSizeTextChunker(5),
+                indexingService
         );
         documentIngestionRunner = new DocumentIngestionRunner(
                 ingestionJobRepository,
@@ -80,7 +89,7 @@ class DocumentIngestionRunnerTest {
         assertThat(completedJob.completedAt()).isNotBlank();
 
         Document document = findDocument(file);
-        assertThat(document.processingStatus()).isEqualTo(DocumentProcessingStatus.CHUNKED);
+        assertThat(document.processingStatus()).isEqualTo(DocumentProcessingStatus.INDEXED);
         assertThat(document.chunkCount()).isPositive();
     }
 
