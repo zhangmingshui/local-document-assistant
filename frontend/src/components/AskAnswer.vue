@@ -23,7 +23,7 @@ defineProps({
 
 const emit = defineEmits(['ask']);
 
-const question = ref('What changed in the latest mock project notes?');
+const question = ref('What do the indexed documents say about this topic?');
 const isQuestionBlank = computed(() => question.value.trim().length === 0);
 
 function submitQuestion() {
@@ -40,16 +40,16 @@ function submitQuestion() {
     <div class="section-heading">
       <p class="eyebrow">Step 3</p>
       <h2>Ask questions</h2>
-      <p>Ask a question and review the mocked answer with mocked source cards.</p>
+      <p>Ask a question and review the answer with its retrieved sources.</p>
     </div>
 
     <form class="chat-panel" @submit.prevent="submitQuestion">
       <label for="question">Question</label>
       <p v-if="!isProcessingComplete" class="helper-message">
-        This is currently mocked. In the real app, answers will use indexed documents after processing completes.
+        Process documents first so answers can use indexed content.
       </p>
       <p v-else class="ready-message">
-        Document processing is complete. Answers are still mocked, but this is the intended point to ask.
+        Document processing is complete. Answers will use relevant indexed chunks.
       </p>
       <textarea
         id="question"
@@ -68,7 +68,7 @@ function submitQuestion() {
     <p v-if="error" class="source-error">{{ error }}</p>
 
     <article v-if="answer" class="answer">
-      <span class="assistant-label">Mocked answer</span>
+      <span class="assistant-label">Answer</span>
       <p>{{ answer.answer }}</p>
       <div class="source-grid">
         <SourceCard

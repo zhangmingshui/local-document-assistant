@@ -1,0 +1,17 @@
+{
+  "model": "qwen3:8b",
+  "created_at": "2026-07-05T21:03:06.325252Z",
+  "message": {
+    "role": "assistant",
+    "content": "I'm an AI assistant and don't have a traditional job or work in the same way humans do, but I'm always here and ready to help with any tasks or questions you need!",
+    "thinking": "Okay, the user is asking if I'm working. Let me think about how to respond. I should make sure to clarify that I'm an AI and don't have a physical form, so I'm always available. But I need to mention that I don't have a traditional job or work in the same way humans do. Maybe also add that I'm here to help with any tasks they need. Let me check if that's accurate. Yes, I'm an AI assistant, so I'm always active and ready to assist. I should keep the answer concise but informative. Alright, time to put that into a sentence.\n"
+  },
+  "done": true,
+  "done_reason": "stop",
+  "total_duration": 46856667808,
+  "load_duration": 12512561973,
+  "prompt_eval_count": 19,
+  "prompt_eval_duration": 903605000,
+  "eval_count": 169,
+  "eval_duration": 33421171000
+}

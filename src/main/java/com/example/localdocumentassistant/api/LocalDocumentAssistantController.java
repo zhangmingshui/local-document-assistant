@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestClientException;
 
 import com.example.localdocumentassistant.documentsource.DocumentSourceService;
 import com.example.localdocumentassistant.documentsource.DocumentSourceService.DocumentSourceSummary;
@@ -21,6 +22,9 @@ import com.example.localdocumentassistant.documentcatalog.DocumentQueryService;
 import com.example.localdocumentassistant.ingestion.IngestionJobService;
 import com.example.localdocumentassistant.indexing.DocumentSearchMatch;
 import com.example.localdocumentassistant.indexing.DocumentSearchService;
+import com.example.localdocumentassistant.questionanswering.ChatModelUnavailableException;
+import com.example.localdocumentassistant.questionanswering.QuestionAnsweringResult;
+import com.example.localdocumentassistant.questionanswering.QuestionAnsweringService;
 
 @RestController
 @RequestMapping("/api")
@@ -31,17 +35,20 @@ public class LocalDocumentAssistantController {
     private final DocumentQueryService documentQueryService;
     private final IngestionJobService ingestionJobService;
     private final DocumentSearchService documentSearchService;
+    private final QuestionAnsweringService questionAnsweringService;
 
     public LocalDocumentAssistantController(
             DocumentSourceService documentSourceService,
             DocumentQueryService documentQueryService,
             IngestionJobService ingestionJobService,
-            DocumentSearchService documentSearchService
+            DocumentSearchService documentSearchService,
+            QuestionAnsweringService questionAnsweringService
     ) {
         this.documentSourceService = documentSourceService;
         this.documentQueryService = documentQueryService;
         this.ingestionJobService = ingestionJobService;
         this.documentSearchService = documentSearchService;
+        this.questionAnsweringService = questionAnsweringService;
     }
 
     @GetMapping("/folders")
@@ -132,34 +139,31 @@ public class LocalDocumentAssistantController {
 
     @PostMapping("/questions")
     public ResponseEntity<?> askQuestion(@RequestBody QuestionRequest request) {
-        if (request.question() == null || request.question().isBlank()) {
+        if (request == null || request.question() == null || request.question().isBlank()) {
             return ResponseEntity.badRequest()
                     .body(new ErrorResponse("Question must not be blank."));
         }
 
-        String question = request.question().trim();
-
-        QuestionResponse response = new QuestionResponse(
-                "Prototype response for \"" + question
-                        + "\". Document retrieval and model calls are not implemented yet, "
-                        + "so this answer is not generated from your documents.",
-                List.of(
-                        new SourceResponse(
-                                "example-notes.txt",
-                                "/prototype/examples/example-notes.txt",
-                                1,
-                                "Placeholder source only. Document retrieval is not implemented yet."
-                        ),
-                        new SourceResponse(
-                                "example-summary.txt",
-                                "/prototype/examples/example-summary.txt",
-                                1,
-                                "Placeholder source only. Model-generated answers are not implemented yet."
-                        )
-                )
-        );
-
-        return ResponseEntity.ok(response);
+        try {
+            QuestionAnsweringResult result = questionAnsweringService.answer(request.question().trim());
+            List<SourceResponse> sources = result.sources().stream()
+                    .map(source -> new SourceResponse(
+                            source.fileName(),
+                            source.filePath(),
+                            source.chunkNumber(),
+                            source.text()
+                    ))
+                    .toList();
+            return ResponseEntity.ok(new QuestionResponse(result.answer(), sources));
+        } catch (ChatModelUnavailableException error) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(new ErrorResponse(error.getMessage()));
+        } catch (RestClientException error) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(new ErrorResponse(
+                            "Question answering is unavailable. Check that Ollama and Chroma are running."
+                    ));
+        }
     }
 
     public record ProcessingJobResponse(
