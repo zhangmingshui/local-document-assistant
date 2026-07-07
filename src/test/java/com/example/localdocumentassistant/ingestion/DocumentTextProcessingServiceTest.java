@@ -6,10 +6,12 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -92,6 +94,27 @@ class DocumentTextProcessingServiceTest {
     }
 
     @Test
+    void needsProcessingDocxDocumentBecomesIndexedWithTikaExtractor() throws Exception {
+        Path file = createDocx("This Word document is about warehouse forecasting.");
+        Document savedDocument = documentRepository.create(needsProcessingDocument(file, "docx"));
+        DocumentTextProcessingService service = new DocumentTextProcessingService(
+                documentRepository,
+                List.of(new PlainTextExtractor(), new TikaDocumentTextExtractor()),
+                new FixedSizeTextChunker(20),
+                indexingService()
+        );
+
+        DocumentProcessingOutcome outcome = service.processDocument(savedDocument);
+
+        Document processedDocument = documentRepository.findByDocumentUuid(savedDocument.documentUuid())
+                .orElseThrow();
+        assertThat(outcome).isEqualTo(DocumentProcessingOutcome.SUCCESSFUL);
+        assertThat(processedDocument.processingStatus()).isEqualTo(DocumentProcessingStatus.INDEXED);
+        assertThat(processedDocument.chunkCount()).isPositive();
+        assertThat(processedDocument.lastProcessedAt()).isNotBlank();
+    }
+
+    @Test
     void needsProcessingDocDocumentRemainsUnchangedWithoutExtractor() throws Exception {
         Path file = Files.writeString(tempDirectory.resolve("legacy.doc"), "Not parsed in this slice");
         Document savedDocument = documentRepository.create(needsProcessingDocument(file, "doc"));
@@ -133,6 +156,38 @@ class DocumentTextProcessingServiceTest {
         assertThat(unprocessedDocument.lastProcessedAt()).isNull();
     }
 
+    @Test
+    void blankExtractedTextLeavesDocumentNeedingProcessing() throws Exception {
+        Path file = Files.writeString(tempDirectory.resolve("blank.docx"), "placeholder");
+        Document savedDocument = documentRepository.create(needsProcessingDocument(file, "docx"));
+        DocumentTextExtractor blankExtractor = new DocumentTextExtractor() {
+            @Override
+            public boolean supports(String fileType) {
+                return "docx".equals(fileType);
+            }
+
+            @Override
+            public String extract(Path path) {
+                return "   \n";
+            }
+        };
+        DocumentTextProcessingService service = new DocumentTextProcessingService(
+                documentRepository,
+                List.of(blankExtractor),
+                new FixedSizeTextChunker(5),
+                mock(DocumentIndexingService.class)
+        );
+
+        DocumentProcessingOutcome outcome = service.processDocument(savedDocument);
+
+        Document unprocessedDocument = documentRepository.findByDocumentUuid(savedDocument.documentUuid())
+                .orElseThrow();
+        assertThat(outcome).isEqualTo(DocumentProcessingOutcome.FAILED);
+        assertThat(unprocessedDocument.processingStatus()).isEqualTo(DocumentProcessingStatus.NEEDS_PROCESSING);
+        assertThat(unprocessedDocument.chunkCount()).isZero();
+        assertThat(unprocessedDocument.lastProcessedAt()).isNull();
+    }
+
     private Document needsProcessingDocument(Path file, String fileType) throws Exception {
         return new Document(
                 null,
@@ -148,5 +203,23 @@ class DocumentTextProcessingServiceTest {
                 0,
                 null
         );
+    }
+
+    private DocumentIndexingService indexingService() {
+        return new DocumentIndexingService(
+                documentRepository,
+                text -> List.of(0.1, 0.2),
+                mock(DocumentVectorStore.class)
+        );
+    }
+
+    private Path createDocx(String text) throws Exception {
+        Path path = tempDirectory.resolve("warehouse.docx");
+        try (XWPFDocument document = new XWPFDocument();
+                OutputStream output = Files.newOutputStream(path)) {
+            document.createParagraph().createRun().setText(text);
+            document.write(output);
+        }
+        return path;
     }
 }

@@ -124,7 +124,8 @@ public class DocumentIngestionRunner {
                     .map(this::readDiscoveredFileMetadata)
                     .toList();
 
-            LOGGER.info("Discovered {} supported .doc/.txt file(s) under {}", discoveredDocuments.size(), sourcePath);
+            LOGGER.info("Discovered {} supported .doc/.docx/.txt file(s) under {}",
+                    discoveredDocuments.size(), sourcePath);
             return discoveredDocuments;
         } catch (IOException | UncheckedIOException | SecurityException scanError) {
             failJob(jobId, "Configured document source directory could not be scanned: " + sourcePath, scanError);
@@ -134,7 +135,7 @@ public class DocumentIngestionRunner {
 
     private boolean isSupportedDocumentFile(Path path) {
         String fileName = path.getFileName().toString().toLowerCase();
-        return fileName.endsWith(".doc") || fileName.endsWith(".txt");
+        return fileName.endsWith(".doc") || fileName.endsWith(".docx") || fileName.endsWith(".txt");
     }
 
     private DiscoveredDocumentMetadata readDiscoveredFileMetadata(Path file) {

@@ -54,8 +54,19 @@ public class DocumentTextProcessingService {
         }
 
         try {
+            System.out.println("Processing document path=" + document.filePath());
             String text = extractor.orElseThrow().extract(Path.of(document.filePath()));
+            if (text == null || text.isBlank()) {
+                LOGGER.warn("Extracted text was blank for document path={}", document.filePath());
+                return DocumentProcessingOutcome.FAILED;
+            }
+
             List<TextChunk> chunks = textChunker.chunk(text);
+            if (chunks.isEmpty()) {
+                LOGGER.warn("Text extraction produced no chunks for document path={}", document.filePath());
+                return DocumentProcessingOutcome.FAILED;
+            }
+
             documentIndexingService.index(document, chunks);
             return DocumentProcessingOutcome.SUCCESSFUL;
         } catch (IOException | RuntimeException processingError) {
