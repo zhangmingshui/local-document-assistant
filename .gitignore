@@ -17,3 +17,5 @@ frontend/dist/
 # Project planning / review documents
 Local_Document_Assistant_Review_Pack.zip
 Local_Document_Assistant_Review_Pack/
+
+logs/
