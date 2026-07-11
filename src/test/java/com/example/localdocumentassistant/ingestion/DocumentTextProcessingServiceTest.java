@@ -5,10 +5,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
@@ -71,7 +74,8 @@ class DocumentTextProcessingServiceTest {
                 documentRepository,
                 List.of(new PlainTextExtractor()),
                 new FixedSizeTextChunker(5),
-                indexingService
+                indexingService,
+                Duration.ofSeconds(5)
         );
     }
 
@@ -99,9 +103,10 @@ class DocumentTextProcessingServiceTest {
         Document savedDocument = documentRepository.create(needsProcessingDocument(file, "docx"));
         DocumentTextProcessingService service = new DocumentTextProcessingService(
                 documentRepository,
-                List.of(new PlainTextExtractor(), new TikaDocumentTextExtractor()),
+                List.of(new PlainTextExtractor(), new TikaDocumentTextExtractor(200_000)),
                 new FixedSizeTextChunker(20),
-                indexingService()
+                indexingService(),
+                Duration.ofSeconds(5)
         );
 
         DocumentProcessingOutcome outcome = service.processDocument(savedDocument);
@@ -143,7 +148,8 @@ class DocumentTextProcessingServiceTest {
                 documentRepository,
                 List.of(new PlainTextExtractor()),
                 new FixedSizeTextChunker(5),
-                failingIndexingService
+                failingIndexingService,
+                Duration.ofSeconds(5)
         );
 
         DocumentProcessingOutcome outcome = service.processDocument(savedDocument);
@@ -157,7 +163,55 @@ class DocumentTextProcessingServiceTest {
     }
 
     @Test
-    void blankExtractedTextLeavesDocumentNeedingProcessing() throws Exception {
+    void zeroByteDocumentBecomesNoExtractableTextWithoutIndexing() throws Exception {
+        Path file = Files.createFile(tempDirectory.resolve("empty.txt"));
+        Document savedDocument = documentRepository.create(needsProcessingDocument(file, "txt"));
+        DocumentIndexingService indexingService = mock(DocumentIndexingService.class);
+        DocumentTextProcessingService service = new DocumentTextProcessingService(
+                documentRepository,
+                List.of(new PlainTextExtractor()),
+                new FixedSizeTextChunker(5),
+                indexingService,
+                Duration.ofSeconds(5)
+        );
+
+        DocumentProcessingOutcome outcome = service.processDocument(savedDocument);
+
+        Document processedDocument = documentRepository.findByDocumentUuid(savedDocument.documentUuid())
+                .orElseThrow();
+        assertThat(outcome).isEqualTo(DocumentProcessingOutcome.SKIPPED);
+        assertThat(processedDocument.processingStatus()).isEqualTo(DocumentProcessingStatus.NO_EXTRACTABLE_TEXT);
+        assertThat(processedDocument.chunkCount()).isZero();
+        assertThat(processedDocument.lastProcessedAt()).isNotBlank();
+        verify(indexingService, never()).index(any(Document.class), anyList());
+    }
+
+    @Test
+    void whitespaceOnlyTxtDocumentBecomesNoExtractableTextWithoutIndexing() throws Exception {
+        Path file = Files.writeString(tempDirectory.resolve("blank.txt"), "   \n\t");
+        Document savedDocument = documentRepository.create(needsProcessingDocument(file, "txt"));
+        DocumentIndexingService indexingService = mock(DocumentIndexingService.class);
+        DocumentTextProcessingService service = new DocumentTextProcessingService(
+                documentRepository,
+                List.of(new PlainTextExtractor()),
+                new FixedSizeTextChunker(5),
+                indexingService,
+                Duration.ofSeconds(5)
+        );
+
+        DocumentProcessingOutcome outcome = service.processDocument(savedDocument);
+
+        Document processedDocument = documentRepository.findByDocumentUuid(savedDocument.documentUuid())
+                .orElseThrow();
+        assertThat(outcome).isEqualTo(DocumentProcessingOutcome.SKIPPED);
+        assertThat(processedDocument.processingStatus()).isEqualTo(DocumentProcessingStatus.NO_EXTRACTABLE_TEXT);
+        assertThat(processedDocument.chunkCount()).isZero();
+        assertThat(processedDocument.lastProcessedAt()).isNotBlank();
+        verify(indexingService, never()).index(any(Document.class), anyList());
+    }
+
+    @Test
+    void blankExtractedTextBecomesNoExtractableText() throws Exception {
         Path file = Files.writeString(tempDirectory.resolve("blank.docx"), "placeholder");
         Document savedDocument = documentRepository.create(needsProcessingDocument(file, "docx"));
         DocumentTextExtractor blankExtractor = new DocumentTextExtractor() {
@@ -175,10 +229,50 @@ class DocumentTextProcessingServiceTest {
                 documentRepository,
                 List.of(blankExtractor),
                 new FixedSizeTextChunker(5),
-                mock(DocumentIndexingService.class)
+                mock(DocumentIndexingService.class),
+                Duration.ofSeconds(5)
         );
 
         DocumentProcessingOutcome outcome = service.processDocument(savedDocument);
+
+        Document processedDocument = documentRepository.findByDocumentUuid(savedDocument.documentUuid())
+                .orElseThrow();
+        assertThat(outcome).isEqualTo(DocumentProcessingOutcome.SKIPPED);
+        assertThat(processedDocument.processingStatus()).isEqualTo(DocumentProcessingStatus.NO_EXTRACTABLE_TEXT);
+        assertThat(processedDocument.chunkCount()).isZero();
+        assertThat(processedDocument.lastProcessedAt()).isNotBlank();
+    }
+
+    @Test
+    void extractionTimeoutLeavesDocumentNeedingProcessing() throws Exception {
+        Path file = Files.writeString(tempDirectory.resolve("slow.txt"), "slow");
+        Document savedDocument = documentRepository.create(needsProcessingDocument(file, "txt"));
+        DocumentTextExtractor slowExtractor = new DocumentTextExtractor() {
+            @Override
+            public boolean supports(String fileType) {
+                return "txt".equals(fileType);
+            }
+
+            @Override
+            public String extract(Path path) {
+                try {
+                    Thread.sleep(5_000);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                }
+                return "too late";
+            }
+        };
+        DocumentTextProcessingService service = new DocumentTextProcessingService(
+                documentRepository,
+                List.of(slowExtractor),
+                new FixedSizeTextChunker(5),
+                mock(DocumentIndexingService.class),
+                Duration.ofMillis(25)
+        );
+
+        DocumentProcessingOutcome outcome = service.processDocument(savedDocument);
+        service.shutdown();
 
         Document unprocessedDocument = documentRepository.findByDocumentUuid(savedDocument.documentUuid())
                 .orElseThrow();

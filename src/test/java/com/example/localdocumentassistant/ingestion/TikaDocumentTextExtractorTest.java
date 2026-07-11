@@ -15,7 +15,7 @@ class TikaDocumentTextExtractorTest {
     @TempDir
     Path tempDirectory;
 
-    private final TikaDocumentTextExtractor extractor = new TikaDocumentTextExtractor();
+    private final TikaDocumentTextExtractor extractor = new TikaDocumentTextExtractor(200_000);
 
     @Test
     void supportsWordDocumentTypesOnly() {

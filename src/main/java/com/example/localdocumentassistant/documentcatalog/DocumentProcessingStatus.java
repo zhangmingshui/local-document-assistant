@@ -6,6 +6,7 @@ public enum DocumentProcessingStatus {
     CHUNKED,
     PROCESSING,
     INDEXED,
+    NO_EXTRACTABLE_TEXT,
     FAILED,
     SKIPPED
 }

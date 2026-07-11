@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
@@ -56,7 +57,8 @@ class DocumentIngestionRunnerTest {
                 documentRepository,
                 List.of(new PlainTextExtractor()),
                 new FixedSizeTextChunker(5),
-                indexingService
+                indexingService,
+                Duration.ofSeconds(5)
         );
         documentIngestionRunner = new DocumentIngestionRunner(
                 ingestionJobRepository,
@@ -111,6 +113,27 @@ class DocumentIngestionRunnerTest {
 
         Document document = findDocument(file);
         assertThat(document.processingStatus()).isEqualTo(DocumentProcessingStatus.NEEDS_PROCESSING);
+    }
+
+    @Test
+    void zeroByteTxtFileIsSkippedWithoutFailingJob() throws Exception {
+        Path file = Files.createFile(tempDirectory.resolve("empty.txt"));
+        IngestionJob job = createPendingJob("job-empty");
+
+        documentIngestionRunner.runIngestion(job.jobId(), documentSource);
+
+        IngestionJob completedJob = ingestionJobRepository.findByJobId(job.jobId()).orElseThrow();
+        assertThat(completedJob.totalFiles()).isEqualTo(1);
+        assertThat(completedJob.processedFiles()).isEqualTo(1);
+        assertThat(completedJob.successfulFiles()).isZero();
+        assertThat(completedJob.failedFiles()).isZero();
+        assertThat(completedJob.skippedFiles()).isEqualTo(1);
+        assertThat(completedJob.status()).isEqualTo(IngestionJobStatus.COMPLETED);
+
+        Document document = findDocument(file);
+        assertThat(document.processingStatus()).isEqualTo(DocumentProcessingStatus.NO_EXTRACTABLE_TEXT);
+        assertThat(document.chunkCount()).isZero();
+        assertThat(document.lastProcessedAt()).isNotBlank();
     }
 
     private IngestionJob createPendingJob(String jobId) {
