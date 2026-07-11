@@ -7,6 +7,8 @@ FRONTEND_DIR="$PROJECT_ROOT/frontend"
 DATA_DIR="$PROJECT_ROOT/data"
 CHROMA_DIR="$DATA_DIR/chroma"
 LOG_DIR="$PROJECT_ROOT/logs/dev-services"
+CHROMA_HOST="127.0.0.1"
+CHROMA_PORT="8000"
 
 START_OLLAMA=false
 
@@ -67,8 +69,8 @@ start_ollama() {
 }
 
 start_chroma() {
-  if is_port_listening 8000; then
-    echo "✅ Chroma is already running on port 8000"
+  if is_port_listening "$CHROMA_PORT"; then
+    echo "✅ Chroma is already running on port $CHROMA_PORT"
     return
   fi
 
@@ -81,9 +83,9 @@ start_chroma() {
   echo "Starting Chroma..."
   cd "$PROJECT_ROOT" || exit 1
 
-  chroma run --path "$CHROMA_DIR" > "$LOG_DIR/chroma.log" 2>&1 &
+  chroma run --path "$CHROMA_DIR" --host "$CHROMA_HOST" --port "$CHROMA_PORT" > "$LOG_DIR/chroma.log" 2>&1 &
 
-  wait_for_port "Chroma" 8000 30
+  wait_for_port "Chroma" "$CHROMA_PORT" 30
 }
 
 start_vue() {
@@ -128,7 +130,7 @@ echo
 echo "Service URLs:"
 echo "-------------"
 echo "Vue:        http://localhost:5173"
-echo "Chroma:     http://localhost:8000"
+echo "Chroma:     http://$CHROMA_HOST:$CHROMA_PORT"
 echo "Ollama:     http://localhost:11434"
 echo
 echo "Spring Boot:"

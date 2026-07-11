@@ -25,6 +25,7 @@ import com.example.localdocumentassistant.indexing.DocumentSearchService;
 import com.example.localdocumentassistant.questionanswering.ChatModelUnavailableException;
 import com.example.localdocumentassistant.questionanswering.QuestionAnsweringResult;
 import com.example.localdocumentassistant.questionanswering.QuestionAnsweringService;
+import org.springframework.web.client.RestTemplate;
 
 @RestController
 @RequestMapping("/api")
@@ -164,6 +165,15 @@ public class LocalDocumentAssistantController {
                             "Question answering is unavailable. Check that Ollama and Chroma are running."
                     ));
         }
+    }
+
+    @GetMapping("/dev/chroma-collections")
+    public ResponseEntity<String> chromaCollections() {
+        String url = "http://localhost:8000/api/v2/tenants/default_tenant/databases/default_database/collections";
+
+        RestTemplate restTemplate = new RestTemplate();
+        String body = restTemplate.getForObject(url, String.class);
+        return ResponseEntity.ok(body);
     }
 
     public record ProcessingJobResponse(

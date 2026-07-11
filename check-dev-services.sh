@@ -5,8 +5,9 @@ set -u
 VUE_URL="http://localhost:5173"
 SPRING_URL="http://localhost:8080/api/folders"
 OLLAMA_URL="http://localhost:11434/api/tags"
-CHROMA_V2_HEARTBEAT="http://localhost:8000/api/v2/heartbeat"
-CHROMA_V1_HEARTBEAT="http://localhost:8000/api/v1/heartbeat"
+CHROMA_URL="http://127.0.0.1:8000"
+CHROMA_V2_HEARTBEAT="$CHROMA_URL/api/v2/heartbeat"
+CHROMA_V1_HEARTBEAT="$CHROMA_URL/api/v1/heartbeat"
 
 EMBEDDING_MODEL="nomic-embed-text"
 CHAT_MODEL="qwen3:8b"
@@ -62,8 +63,8 @@ if curl -s -o /dev/null -w "%{http_code}" "$CHROMA_V2_HEARTBEAT" | grep -qE "^(2
 elif curl -s -o /dev/null -w "%{http_code}" "$CHROMA_V1_HEARTBEAT" | grep -qE "^(2|3)"; then
   echo "✅ Chroma is running at $CHROMA_V1_HEARTBEAT"
 else
-  echo "❌ Chroma is not responding on localhost:8000"
-  echo "   Try: chroma run --path ./data/chroma"
+  echo "❌ Chroma is not responding at $CHROMA_URL"
+  echo "   Try: chroma run --path ./data/chroma --host 127.0.0.1 --port 8000"
   all_ok=false
 fi
 
