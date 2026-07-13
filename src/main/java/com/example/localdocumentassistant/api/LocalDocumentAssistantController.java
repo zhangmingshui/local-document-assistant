@@ -218,7 +218,9 @@ public class LocalDocumentAssistantController {
             String filePath,
             int chunkIndex,
             Long documentId,
-            String documentUuid
+            String documentUuid,
+            double distance,
+            double relevance
     ) {
     }
 
@@ -232,7 +234,9 @@ public class LocalDocumentAssistantController {
                 match.filePath(),
                 match.chunkIndex(),
                 match.documentId(),
-                match.documentUuid()
+                match.documentUuid(),
+                match.distance(),
+                match.relevance()
         );
     }
 }

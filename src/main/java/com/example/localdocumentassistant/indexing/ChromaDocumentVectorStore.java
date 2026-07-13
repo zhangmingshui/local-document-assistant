@@ -69,7 +69,7 @@ public class ChromaDocumentVectorStore implements DocumentVectorStore {
                 .body(Map.of(
                         "query_embeddings", List.of(queryEmbedding),
                         "n_results", limit,
-                        "include", List.of("documents", "metadatas")
+                        "include", List.of("documents", "metadatas", "distances")
                 ))
                 .retrieve()
                 .body(ChromaQueryResponse.class);
@@ -80,6 +80,7 @@ public class ChromaDocumentVectorStore implements DocumentVectorStore {
 
         List<String> documents = response.documents().get(0);
         List<Map<String, Object>> metadatas = response.metadatas().get(0);
+        List<Double> distances = response.distances().get(0);
         List<DocumentSearchMatch> matches = new ArrayList<>();
         for (int index = 0; index < documents.size(); index++) {
             Map<String, Object> metadata = metadatas.get(index);
@@ -89,7 +90,8 @@ public class ChromaDocumentVectorStore implements DocumentVectorStore {
                     stringValue(metadata, "filePath"),
                     intValue(metadata, "chunkIndex"),
                     longValue(metadata, "documentId"),
-                    stringValue(metadata, "documentUuid")
+                    stringValue(metadata, "documentUuid"),
+                    distances.get(index)
             ));
         }
         return matches;
@@ -148,7 +150,8 @@ public class ChromaDocumentVectorStore implements DocumentVectorStore {
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record ChromaQueryResponse(
             List<List<String>> documents,
-            List<List<Map<String, Object>>> metadatas
+            List<List<Map<String, Object>>> metadatas,
+            List<List<Double>> distances
     ) {
     }
 }

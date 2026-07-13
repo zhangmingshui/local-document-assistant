@@ -37,7 +37,8 @@ class DocumentSearchServiceTest {
                 "/tmp/notes.txt",
                 0,
                 12L,
-                "doc-uuid-1"
+                "doc-uuid-1",
+                0.25
         );
         when(embeddingService.embed("search text")).thenReturn(queryEmbedding);
         when(documentVectorStore.search(queryEmbedding, 5)).thenReturn(List.of(match));
