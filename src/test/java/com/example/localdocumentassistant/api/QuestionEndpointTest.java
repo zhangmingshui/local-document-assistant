@@ -22,10 +22,11 @@ import com.example.localdocumentassistant.indexing.DocumentSearchMatch;
 import com.example.localdocumentassistant.indexing.DocumentSearchService;
 import com.example.localdocumentassistant.ingestion.IngestionJobService;
 import com.example.localdocumentassistant.questionanswering.ChatModelService;
+import com.example.localdocumentassistant.questionanswering.QuestionAnsweringPromptBuilder;
 import com.example.localdocumentassistant.questionanswering.QuestionAnsweringService;
 
 @WebMvcTest(LocalDocumentAssistantController.class)
-@Import(QuestionAnsweringService.class)
+@Import({QuestionAnsweringService.class, QuestionAnsweringPromptBuilder.class})
 class QuestionEndpointTest {
 
     @Autowired

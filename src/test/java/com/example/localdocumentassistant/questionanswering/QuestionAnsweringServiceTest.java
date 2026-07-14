@@ -27,13 +27,16 @@ class QuestionAnsweringServiceTest {
     @Mock
     private ChatModelService chatModelService;
 
+    private QuestionAnsweringPromptBuilder promptBuilder;
     private QuestionAnsweringService questionAnsweringService;
 
     @BeforeEach
     void setUp() {
+        promptBuilder = new QuestionAnsweringPromptBuilder();
         questionAnsweringService = new QuestionAnsweringService(
                 documentSearchService,
                 chatModelService,
+                promptBuilder,
                 8,
                 3,
                 0.5
@@ -138,6 +141,7 @@ class QuestionAnsweringServiceTest {
         QuestionAnsweringService service = new QuestionAnsweringService(
                 documentSearchService,
                 chatModelService,
+                promptBuilder,
                 8,
                 2,
                 0.5

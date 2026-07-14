@@ -21,6 +21,7 @@ public class QuestionAnsweringService {
 
     private final DocumentSearchService documentSearchService;
     private final ChatModelService chatModelService;
+    private final QuestionAnsweringPromptBuilder promptBuilder;
     private final int searchLimit;
     private final int maxContextChunks;
     private final double minRelevance;
@@ -28,12 +29,14 @@ public class QuestionAnsweringService {
     public QuestionAnsweringService(
             DocumentSearchService documentSearchService,
             ChatModelService chatModelService,
+            QuestionAnsweringPromptBuilder promptBuilder,
             @Value("${app.rag.search-limit:8}") int searchLimit,
             @Value("${app.rag.max-context-chunks:3}") int maxContextChunks,
             @Value("${app.rag.min-relevance:0.5}") double minRelevance
     ) {
         this.documentSearchService = documentSearchService;
         this.chatModelService = chatModelService;
+        this.promptBuilder = promptBuilder;
         this.searchLimit = searchLimit;
         this.maxContextChunks = maxContextChunks;
         this.minRelevance = minRelevance;
@@ -76,8 +79,8 @@ public class QuestionAnsweringService {
                 .toList();
         LocalDateTime start = LocalDateTime.now();
         LOGGER.info("START Ask llm " + start);
-        String answer = chatModelService.generateAnswer(
-            buildPrompt(question, matches));
+        String prompt = promptBuilder.build(question, matches);
+        String answer = chatModelService.generateAnswer(prompt);
         LocalDateTime end = LocalDateTime.now();
         LOGGER.info("END Ask llm " + end);
 
@@ -91,28 +94,5 @@ public class QuestionAnsweringService {
         LOGGER.info("Time elapsed: " + display);
 
         return new QuestionAnsweringResult(answer, sources);
-    }
-
-    private String buildPrompt(String question, List<DocumentSearchMatch> matches) {
-        StringBuilder prompt = new StringBuilder();
-        prompt.append("Answer the question using only the supplied context.\n")
-                .append("If the answer is not in the context, say: \"")
-                .append(NO_RELEVANT_INFORMATION)
-                .append("\"\n\nContext:\n");
-
-        for (int index = 0; index < matches.size(); index++) {
-            DocumentSearchMatch match = matches.get(index);
-            prompt.append("[Source ")
-                    .append(index + 1)
-                    .append(": ")
-                    .append(match.fileName())
-                    .append(", chunk ")
-                    .append(match.chunkIndex())
-                    .append("]\n")
-                    .append(match.text())
-                    .append("\n\n");
-        }
-
-        return prompt.append("Question:\n").append(question).toString();
     }
 }
