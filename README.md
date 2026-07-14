@@ -1,26 +1,27 @@
 # Local Document Assistant
 
-A Mac-first local document assistant prototype. The current app is a mocked end-to-end flow for configuring a document source, starting a fake processing job, polling status, and asking a mocked question.
+A Mac-first local document assistant prototype. The current app can configure local document sources, process supported documents, index chunks in Chroma, and answer questions using retrieved chunks with Ollama.
 
 ## Current Status
 
 This is still an early prototype:
 
-- Mocked end-to-end local document assistant flow
-- No real document scanning yet
-- No SQLite integration yet
-- No Chroma integration yet
-- No Ollama integration yet
-- No Apache Tika integration yet
-- No embeddings, chunking, retrieval, or LLM calls yet
+- SQLite stores configured folders, processing jobs, and document metadata
+- Chroma stores embedded document chunks
+- Ollama provides embeddings and chat responses
+- Apache Tika extracts text from Word documents
+- Question answering is still a thin prototype RAG flow
 
-The app uses fake/mock data only. User-entered paths are treated as strings and are not scanned or validated.
+Source documents are read-only inputs. The app must not edit, delete, rename, move, or write into source folders.
 
 ## Tech Stack
 
 - Backend: Java + Spring Boot
 - Frontend: Vue + Vite
-- APIs: mocked HTTP endpoints
+- APIs: Spring Boot HTTP endpoints
+- Local AI: Ollama
+- Vector store: Chroma
+- Metadata store: SQLite
 - Build tools: Maven for backend, npm/Vite for frontend
 
 ## Run the Backend
@@ -32,6 +33,20 @@ java -version
 mvn -version
 mvn spring-boot:run
 ```
+
+The default backend profile is `custom-ollama`, which uses the existing direct HTTP Ollama chat implementation:
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=custom-ollama
+```
+
+To use the Spring AI Ollama chat implementation instead:
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=spring-ai
+```
+
+Both profiles still use the existing custom Ollama embedding implementation and the existing custom Chroma integration.
 
 If Maven reports Java 8, point it at a newer JDK first:
 
@@ -65,20 +80,20 @@ The Vite dev server proxies `/api` requests to the Spring Boot backend at `http:
 1. Enter a document source path.
 2. Click `Use this folder`.
 3. The frontend sends `POST /api/processing-jobs`.
-4. The backend creates a mocked in-memory processing job and returns a `jobId` and `pollUrl`.
-5. Refresh or poll the mocked processing status.
-6. The fake job advances over time and eventually completes.
-7. Ask a mocked question.
+4. The backend creates a processing job and returns a `jobId` and `pollUrl`.
+5. The UI polls processing status.
+6. The backend scans supported documents, chunks extracted text, embeds chunks, and stores them in Chroma.
+7. Ask a question.
 8. The frontend sends `POST /api/questions`.
-9. The UI displays a mocked answer and mocked source snippets.
+9. The backend retrieves matching chunks, calls the configured chat model, and returns an answer with source snippets.
 
-## Mocked Backend Endpoints
+## Backend Endpoints
 
 - `POST /api/processing-jobs`
 - `GET /api/processing-jobs/{jobId}`
 - `POST /api/questions`
 
-Additional mocked helper endpoints may exist for the prototype UI, such as folder examples.
+Additional helper endpoints may exist for the prototype UI and local debugging.
 
 ## Safety Constraints
 

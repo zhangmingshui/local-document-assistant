@@ -3,11 +3,13 @@ package com.example.localdocumentassistant.questionanswering;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 @Service
+@Profile("custom-ollama")
 public class OllamaChatModelService implements ChatModelService {
 
     private final RestClient restClient;
