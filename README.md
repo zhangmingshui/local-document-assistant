@@ -75,6 +75,80 @@ Frontend URL:
 
 The Vite dev server proxies `/api` requests to the Spring Boot backend at `http://localhost:8080`.
 
+## Run A Local QA Benchmark
+
+Start the local services first:
+
+```bash
+./startup-dev-services.sh
+ollama pull nomic-embed-text
+ollama pull qwen3:8b
+```
+
+Then start Spring Boot with the chat implementation you want to measure:
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=custom-ollama
+```
+
+or:
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=spring-ai
+```
+
+To explicitly ask Ollama/Qwen to return thinking diagnostics in the custom Ollama path, add:
+
+```bash
+mvn spring-boot:run \
+  -Dspring-boot.run.profiles=custom-ollama \
+  -Dspring-boot.run.arguments="--local-document-assistant.ollama.think=true"
+```
+
+Run the benchmark:
+
+```bash
+./scripts/qa-benchmark.sh
+```
+
+The benchmark script uses Bash and `curl`; it does not require `jq` or Python.
+
+To repeat each question three times:
+
+```bash
+./scripts/qa-benchmark.sh 3
+```
+
+Responses are written to:
+
+```text
+data/qa-benchmark/responses.jsonl
+```
+
+Inspect the Spring Boot logs for diagnostic lines:
+
+```bash
+grep 'QA_METRICS' logs/spring-boot.log
+grep 'QA_RETRIEVAL_CHUNK' logs/spring-boot.log
+grep 'CHAT_MODEL_METRICS' logs/spring-boot.log
+```
+
+## RAG Settings
+
+Normal question answering uses these backend settings:
+
+```properties
+app.rag.search-limit=8
+app.rag.max-context-chunks=2
+app.rag.min-relevance=0.5
+```
+
+- `app.rag.search-limit`: number of candidate chunks requested from Chroma.
+- `app.rag.min-relevance`: minimum calculated relevance required before a chunk is used.
+- `app.rag.max-context-chunks`: maximum number of filtered chunks passed into the LLM prompt.
+
+`max-context-chunks` counts chunks, not documents. Multiple chunks can come from the same document.
+
 ## Current User Flow
 
 1. Enter a document source path.

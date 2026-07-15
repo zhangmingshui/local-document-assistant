@@ -1,8 +1,7 @@
 package com.example.localdocumentassistant.questionanswering;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +30,7 @@ public class QuestionAnsweringService {
             ChatModelService chatModelService,
             QuestionAnsweringPromptBuilder promptBuilder,
             @Value("${app.rag.search-limit:8}") int searchLimit,
-            @Value("${app.rag.max-context-chunks:3}") int maxContextChunks,
+            @Value("${app.rag.max-context-chunks:2}") int maxContextChunks,
             @Value("${app.rag.min-relevance:0.5}") double minRelevance
     ) {
         this.documentSearchService = documentSearchService;
@@ -43,29 +42,54 @@ public class QuestionAnsweringService {
     }
 
     public QuestionAnsweringResult answer(String question) {
+        String requestId = UUID.randomUUID().toString().substring(0, 8);
+        long requestStartNanos = System.nanoTime();
+
+        long searchStartNanos = System.nanoTime();
         List<DocumentSearchMatch> retrievedMatches = documentSearchService.search(question, searchLimit);
+        long searchMs = elapsedMillis(searchStartNanos);
+
+        long filterStartNanos = System.nanoTime();
         List<DocumentSearchMatch> matches = retrievedMatches.stream()
                 .filter(match -> match.relevance() >= minRelevance)
                 .limit(maxContextChunks)
                 .toList();
+        long filterMs = elapsedMillis(filterStartNanos);
 
         LOGGER.info(
-                "Retrieved chunks for question query=\"{}\" returned={} kept={} minRelevance={} maxContextChunks={}",
+                "QA_RETRIEVAL requestId={} query=\"{}\" questionChars={} returned={} kept={} minRelevance={} maxContextChunks={}",
+                requestId,
                 question,
+                question.length(),
                 retrievedMatches.size(),
                 matches.size(),
                 minRelevance,
                 maxContextChunks
         );
         matches.forEach(match -> LOGGER.info(
-                "Kept chunk fileName={} chunkIndex={} distance={} relevance={}",
+                "QA_RETRIEVAL_CHUNK requestId={} fileName={} chunkIndex={} distance={} relevance={} textChars={}",
+                requestId,
                 match.fileName(),
                 match.chunkIndex(),
                 match.distance(),
-                match.relevance()
+                match.relevance(),
+                match.text() == null ? 0 : match.text().length()
         ));
 
         if (matches.isEmpty()) {
+            logMetrics(
+                    requestId,
+                    requestStartNanos,
+                    searchMs,
+                    filterMs,
+                    0,
+                    0,
+                    question.length(),
+                    retrievedMatches.size(),
+                    0,
+                    0,
+                    NO_RELEVANT_INFORMATION.length()
+            );
             return new QuestionAnsweringResult(NO_RELEVANT_INFORMATION, List.of());
         }
 
@@ -77,22 +101,67 @@ public class QuestionAnsweringService {
                         match.text()
                 ))
                 .toList();
-        LocalDateTime start = LocalDateTime.now();
-        LOGGER.info("START Ask llm " + start);
+
+        long promptStartNanos = System.nanoTime();
         String prompt = promptBuilder.build(question, matches);
+        long promptMs = elapsedMillis(promptStartNanos);
+
+        long llmStartNanos = System.nanoTime();
         String answer = chatModelService.generateAnswer(prompt);
-        LocalDateTime end = LocalDateTime.now();
-        LOGGER.info("END Ask llm " + end);
+        long llmMs = elapsedMillis(llmStartNanos);
 
-        Duration elapsed = Duration.between(start, end);
-
-        long hours = elapsed.toHours();
-        long minutes = elapsed.toMinutesPart();
-        long seconds = elapsed.toSecondsPart();
-
-        String display = "%d hours, %d minutes, %d seconds".formatted(hours, minutes, seconds);
-        LOGGER.info("Time elapsed: " + display);
+        logMetrics(
+                requestId,
+                requestStartNanos,
+                searchMs,
+                filterMs,
+                promptMs,
+                llmMs,
+                question.length(),
+                retrievedMatches.size(),
+                matches.size(),
+                prompt.length(),
+                answer == null ? 0 : answer.length()
+        );
 
         return new QuestionAnsweringResult(answer, sources);
+    }
+
+    private void logMetrics(
+            String requestId,
+            long requestStartNanos,
+            long searchMs,
+            long filterMs,
+            long promptMs,
+            long llmMs,
+            int questionChars,
+            int retrievedChunks,
+            int keptChunks,
+            int promptChars,
+            int answerChars
+    ) {
+        LOGGER.info(
+                "QA_METRICS requestId={} totalMs={} searchMs={} filterMs={} promptMs={} llmMs={} "
+                        + "questionChars={} retrievedChunks={} keptChunks={} promptChars={} answerChars={} "
+                        + "searchLimit={} maxContextChunks={} minRelevance={}",
+                requestId,
+                elapsedMillis(requestStartNanos),
+                searchMs,
+                filterMs,
+                promptMs,
+                llmMs,
+                questionChars,
+                retrievedChunks,
+                keptChunks,
+                promptChars,
+                answerChars,
+                searchLimit,
+                maxContextChunks,
+                minRelevance
+        );
+    }
+
+    private long elapsedMillis(long startNanos) {
+        return (System.nanoTime() - startNanos) / 1_000_000;
     }
 }

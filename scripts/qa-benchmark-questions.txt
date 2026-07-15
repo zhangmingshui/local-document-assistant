@@ -1,0 +1,10 @@
+What machine learning work is described in these documents?
+What decisions were made about data upload?
+What does the material say about Azure Blob storage?
+What problems or risks are mentioned?
+What implementation work is described?
+What testing work is described?
+What architecture decisions are described?
+What could be summarised for a CV?
+What documents mention Spark?
+What does the material say about Kubernetes?

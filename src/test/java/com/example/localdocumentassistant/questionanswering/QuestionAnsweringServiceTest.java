@@ -38,7 +38,7 @@ class QuestionAnsweringServiceTest {
                 chatModelService,
                 promptBuilder,
                 8,
-                3,
+                2,
                 0.5
         );
     }
@@ -138,14 +138,6 @@ class QuestionAnsweringServiceTest {
 
     @Test
     void limitsPromptToMaxContextChunksAfterRelevanceFiltering() {
-        QuestionAnsweringService service = new QuestionAnsweringService(
-                documentSearchService,
-                chatModelService,
-                promptBuilder,
-                8,
-                2,
-                0.5
-        );
         when(documentSearchService.search("many matches", 8)).thenReturn(List.of(
                 match("First kept", "first.txt", "/documents/first.txt", 0, 31L, "document-31", 0.1),
                 match("Second kept", "second.txt", "/documents/second.txt", 1, 32L, "document-32", 0.2),
@@ -153,7 +145,7 @@ class QuestionAnsweringServiceTest {
         ));
         when(chatModelService.generateAnswer(anyString())).thenReturn("Limited answer");
 
-        QuestionAnsweringResult result = service.answer("many matches");
+        QuestionAnsweringResult result = questionAnsweringService.answer("many matches");
 
         assertThat(result.sources()).hasSize(2);
         ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
