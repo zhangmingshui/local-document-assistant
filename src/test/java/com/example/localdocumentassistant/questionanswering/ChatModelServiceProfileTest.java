@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestClient;
 
 class ChatModelServiceProfileTest {
@@ -19,10 +20,16 @@ class ChatModelServiceProfileTest {
         new ApplicationContextRunner()
                 .withUserConfiguration(CustomOllamaProfileTestConfiguration.class)
                 .withPropertyValues("spring.profiles.active=custom-ollama")
-                .run(context -> assertThat(context)
-                        .hasSingleBean(ChatModelService.class)
-                        .hasSingleBean(OllamaChatModelService.class)
-                        .doesNotHaveBean(SpringAiChatModelService.class));
+                .run(context -> {
+                    assertThat(context)
+                            .hasSingleBean(ChatModelService.class)
+                            .hasSingleBean(OllamaChatModelService.class)
+                            .doesNotHaveBean(SpringAiChatModelService.class);
+                    assertThat(ReflectionTestUtils.getField(
+                            context.getBean(OllamaChatModelService.class),
+                            "chatModel"
+                    )).isEqualTo("qwen2.5:3b");
+                });
     }
 
     @Test
@@ -30,10 +37,16 @@ class ChatModelServiceProfileTest {
         new ApplicationContextRunner()
                 .withUserConfiguration(SpringAiProfileTestConfiguration.class)
                 .withPropertyValues("spring.profiles.active=spring-ai")
-                .run(context -> assertThat(context)
-                        .hasSingleBean(ChatModelService.class)
-                        .hasSingleBean(SpringAiChatModelService.class)
-                        .doesNotHaveBean(OllamaChatModelService.class));
+                .run(context -> {
+                    assertThat(context)
+                            .hasSingleBean(ChatModelService.class)
+                            .hasSingleBean(SpringAiChatModelService.class)
+                            .doesNotHaveBean(OllamaChatModelService.class);
+                    assertThat(ReflectionTestUtils.getField(
+                            context.getBean(SpringAiChatModelService.class),
+                            "chatModel"
+                    )).isEqualTo("qwen2.5:3b");
+                });
     }
 
     @Configuration

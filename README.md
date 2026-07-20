@@ -82,7 +82,7 @@ Start the local services first:
 ```bash
 ./startup-dev-services.sh
 ollama pull nomic-embed-text
-ollama pull qwen3:8b
+ollama pull qwen2.5:3b
 ```
 
 Then start Spring Boot with the chat implementation you want to measure:
@@ -148,6 +148,8 @@ app.rag.min-relevance=0.5
 - `app.rag.max-context-chunks`: maximum number of filtered chunks passed into the LLM prompt.
 
 `max-context-chunks` counts chunks, not documents. Multiple chunks can come from the same document.
+
+The default chat model for question answering is currently `qwen2.5:3b`.
 
 ## Current User Flow
 

@@ -18,7 +18,7 @@ public class SpringAiChatModelService implements ChatModelService {
 
     public SpringAiChatModelService(
             ChatClient.Builder chatClientBuilder,
-            @Value("${ollama.chat-model:qwen3:8b}") String chatModel
+            @Value("${ollama.chat-model:qwen2.5:3b}") String chatModel
     ) {
         this.chatClient = chatClientBuilder.build();
         this.chatModel = chatModel;

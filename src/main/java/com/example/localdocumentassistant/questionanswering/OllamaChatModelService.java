@@ -23,16 +23,19 @@ public class OllamaChatModelService implements ChatModelService {
     private final RestClient restClient;
     private final String chatModel;
     private final Boolean think;
+    private final Integer numPredict;
 
     public OllamaChatModelService(
             RestClient.Builder restClientBuilder,
             @Value("${ollama.base-url:http://localhost:11434}") String baseUrl,
-            @Value("${ollama.chat-model:qwen3:8b}") String chatModel,
-            @Value("${local-document-assistant.ollama.think:false}") Boolean think
+            @Value("${ollama.chat-model:qwen2.5:3b}") String chatModel,
+            @Value("${local-document-assistant.ollama.think:false}") Boolean think,
+            @Value("${local-document-assistant.ollama.num-predict:#{null}}") Integer numPredict
     ) {
         this.restClient = restClientBuilder.baseUrl(baseUrl).build();
         this.chatModel = chatModel;
         this.think = think;
+        this.numPredict = numPredict;
     }
 
     @Override
@@ -45,6 +48,7 @@ public class OllamaChatModelService implements ChatModelService {
                             chatModel,
                             false,
                             think,
+                            new OllamaChatOptions(numPredict),
                             List.of(new OllamaMessage("user", prompt, null))
                     ))
                     .retrieve()
@@ -128,7 +132,17 @@ public class OllamaChatModelService implements ChatModelService {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    record OllamaChatRequest(String model, boolean stream, Boolean think, List<OllamaMessage> messages) {
+    record OllamaChatRequest(
+            String model,
+            boolean stream,
+            Boolean think,
+            OllamaChatOptions options,
+            List<OllamaMessage> messages
+    ) {
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record OllamaChatOptions(@JsonProperty("num_predict") Integer numPredict) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

@@ -21,13 +21,14 @@ class OllamaChatModelServiceTest {
         OllamaChatModelService service = new OllamaChatModelService(
                 builder,
                 "http://localhost:11434",
-                "qwen3:8b",
-                false
+                "qwen2.5:3b",
+                false,
+                null
         );
         server.expect(requestTo("http://localhost:11434/api/chat"))
                 .andExpect(content().json("""
                         {
-                          "model": "qwen3:8b",
+                          "model": "qwen2.5:3b",
                           "stream": false,
                           "think": false,
                           "messages": [
@@ -37,7 +38,7 @@ class OllamaChatModelServiceTest {
                         """))
                 .andRespond(withSuccess("""
                         {
-                          "model": "qwen3:8b",
+                          "model": "qwen2.5:3b",
                           "message": {
                             "role": "assistant",
                             "content": "Answer from Ollama",
@@ -67,13 +68,14 @@ class OllamaChatModelServiceTest {
         OllamaChatModelService service = new OllamaChatModelService(
                 builder,
                 "http://localhost:11434",
-                "qwen3:8b",
-                true
+                "qwen2.5:3b",
+                true,
+                null
         );
         server.expect(requestTo("http://localhost:11434/api/chat"))
                 .andExpect(content().json("""
                         {
-                          "model": "qwen3:8b",
+                          "model": "qwen2.5:3b",
                           "stream": false,
                           "think": true,
                           "messages": [

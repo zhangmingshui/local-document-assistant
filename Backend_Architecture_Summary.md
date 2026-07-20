@@ -238,7 +238,7 @@ It sends a non-streaming chat request:
 
 ```json
 {
-  "model": "qwen3:8b",
+  "model": "qwen2.5:3b",
   "stream": false,
   "messages": [
     {
@@ -252,7 +252,7 @@ It sends a non-streaming chat request:
 Current chat model default:
 
 ```properties
-ollama.chat-model=qwen3:8b
+ollama.chat-model=qwen2.5:3b
 ```
 
 ## Controllers, DTOs, And Endpoints

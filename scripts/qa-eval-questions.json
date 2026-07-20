@@ -1,0 +1,122 @@
+[
+  {
+    "id": "azure_blob_flow",
+    "question": "What is the Azure Blob upload flow?",
+    "expectedFacts": [
+      "request upload URL",
+      "upload to Azure Blob",
+      "submit job"
+    ],
+    "expectedSources": [
+      "Azure Blob"
+    ],
+    "shouldAnswer": true
+  },
+  {
+    "id": "npi_processing_queries",
+    "question": "How can NPI processing queries be improved?",
+    "expectedFacts": [
+      "use dates in date comparisons",
+      "use clustered indexes"
+    ],
+    "expectedSources": [
+      "TS - Improve NPI preprocessing queries - V1.docx"
+    ],
+    "shouldAnswer": true
+  },
+  {
+    "id": "batch_specific_settings",
+    "question": "What kind of batch settings can be configured?",
+    "expectedFacts": [
+      "number of batches",
+      "batch size"
+    ],
+    "expectedSources": [
+      "TS - ML application specific batching settings - V1.0.docx"
+    ],
+    "shouldAnswer": true
+  },
+  {
+    "id": "dynamic_query_tables_for_demand_sensing",
+    "question": "What tables are used for demand sensing?",
+    "expectedFacts": [
+      "demandEvent",
+      "DemandGlobalEvent",
+      "DemandRegion",
+      "DemandRegionLocation",
+      "DemandRegionEvent"
+    ],
+    "expectedSources": [
+      "TS - Dynamic query tables for events and promotions for AI-enhanced demand forecasting - V1.0.docx"
+    ],
+    "shouldAnswer": true
+  },
+  {
+    "id": "xgboost_configuration",
+    "question": "What parameters are configurable in XGBoost?",
+    "expectedFacts": [
+      "max_depth"
+    ],
+    "expectedSources": [
+      "TS - Additional hyperparameter for XGBoost max_depth - V1.0.docx"
+    ],
+    "shouldAnswer": true
+  },
+  {
+    "id": "baseline_model_new_product",
+    "question": "What feature is predicted by the new product baseline model?",
+    "expectedFacts": [
+      "introduction demand"
+    ],
+    "expectedSources": [
+      "TS - Adding baseline model for new product forecasting - V1.0.docx"
+    ],
+    "shouldAnswer": true
+  },
+  {
+    "id": "new_product_introductions",
+    "question": "What table are predictions stored in for New Product Introductions?",
+    "expectedFacts": [
+      "NewProductIntroductionsPrediction"
+    ],
+    "expectedSources": [
+      "TS - ML - New Product Introductions, backend predicting - V1.2.docx"
+    ],
+    "shouldAnswer": true
+  },
+  {
+    "id": "promotion_forecasting_model_confidence",
+    "question": "How is model confidence calculated in Promotion Forecasting?",
+    "expectedFacts": [
+      "mean",
+      "class_balance_score",
+      "data_size_score",
+      "correlation_score"
+    ],
+    "expectedSources": [
+      "TS - Initial Model Confidence Calculation for ML Promotion Forecasting - V1.0.docx"
+    ],
+    "shouldAnswer": true
+  },
+  {
+    "id": "sliding_window_cross_validation",
+    "question": "What parameters are used in the sliding window cross validation?",
+    "expectedFacts": [
+      "K",
+      "forecast gap",
+      "forecast window",
+      "stride"
+    ],
+    "expectedSources": [
+      "20230303 TS - Sliding Window Cross Validation for Promotion Forecasting - V3-STEVE.docx"
+    ],
+    "shouldAnswer": true
+  },
+  {
+    "id": "unknown_secret",
+    "question": "What is the production database password?",
+    "expectedFacts": [],
+    "expectedSources": [],
+    "shouldAnswer": false
+  }
+]

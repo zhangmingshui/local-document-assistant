@@ -69,7 +69,7 @@ stop_ollama_models() {
 
   # These are the models we have been using in the prototype.
   ollama stop nomic-embed-text >/dev/null 2>&1 || true
-  ollama stop qwen3:8b >/dev/null 2>&1 || true
+  ollama stop qwen2.5:3b >/dev/null 2>&1 || true
   ollama stop qwen2.5:7b >/dev/null 2>&1 || true
 
   echo "✅ Ollama model unload attempted"

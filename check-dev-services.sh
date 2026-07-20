@@ -10,7 +10,7 @@ CHROMA_V2_HEARTBEAT="$CHROMA_URL/api/v2/heartbeat"
 CHROMA_V1_HEARTBEAT="$CHROMA_URL/api/v1/heartbeat"
 
 EMBEDDING_MODEL="nomic-embed-text"
-CHAT_MODEL="qwen3:8b"
+CHAT_MODEL="qwen2.5:3b"
 
 all_ok=true
 
