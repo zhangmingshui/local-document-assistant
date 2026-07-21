@@ -106,9 +106,21 @@ public class QuestionAnsweringService {
         String prompt = promptBuilder.build(question, matches);
         long promptMs = elapsedMillis(promptStartNanos);
 
+        LOGGER.info(
+                "QA_LLM_INPUT requestId={}\n--- PROMPT SENT TO LLM ---\n{}\n--- END PROMPT ---",
+                requestId,
+                prompt
+        );
+
         long llmStartNanos = System.nanoTime();
         String answer = chatModelService.generateAnswer(prompt);
         long llmMs = elapsedMillis(llmStartNanos);
+
+        LOGGER.info(
+                "QA_LLM_OUTPUT requestId={}\n--- ANSWER RETURNED BY LLM ---\n{}\n--- END ANSWER ---",
+                requestId,
+                answer
+        );
 
         logMetrics(
                 requestId,

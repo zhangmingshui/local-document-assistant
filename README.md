@@ -133,6 +133,38 @@ grep 'QA_RETRIEVAL_CHUNK' logs/spring-boot.log
 grep 'CHAT_MODEL_METRICS' logs/spring-boot.log
 ```
 
+To compare the exact prompt sent to the LLM with its answer, inspect the paired `QA_LLM_INPUT` and `QA_LLM_OUTPUT` entries. Both entries share the same `requestId`:
+
+```bash
+grep -A 100 'QA_LLM_INPUT\|QA_LLM_OUTPUT' logs/spring-boot.log
+```
+
+These entries include the complete retrieved context and may therefore contain document content. Keep the local log file private.
+
+## Manual QA Evaluation
+
+The manual QA evaluation requires Spring Boot, Chroma, and Ollama to be running, and the documents must already be indexed.
+
+Run the evaluation with:
+
+```bash
+./scripts/qa-evel.sh
+```
+
+To use a backend on a different port:
+
+```bash
+QA_BASE_URL=http://localhost:8081 ./scripts/qa-evel.sh
+```
+
+Each run writes its reports to a new timestamped directory:
+
+```text
+data/qa-eval/<timestamp>/
+```
+
+The reports include the top candidates returned by `/api/search`, short candidate previews, the QA answer, and advisory checks for expected facts and sources. Source checks consider both the search candidates and the sources returned with the QA answer.
+
 ## RAG Settings
 
 Normal question answering uses these backend settings:
